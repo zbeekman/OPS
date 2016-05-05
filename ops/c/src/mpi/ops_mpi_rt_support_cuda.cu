@@ -188,9 +188,9 @@ void ops_comm_realloc(char **ptr, int size, int prev) {
     }
   } else {
     if (*ptr == NULL) {
-      *ptr = (char *)malloc(size);
+      *ptr = (char *)ops_malloc(size);
     } else {
-      *ptr = (char *)realloc(*ptr, size);
+      *ptr = (char*)ops_realloc(*ptr, size);
     }
   }
   cutilSafeCall(cudaDeviceSynchronize());
