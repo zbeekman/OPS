@@ -9,7 +9,6 @@ make clean
 make
 
 #============================ Test Cloverleaf 3D With Intel Compilers==========================================================
-#<<COMMENT
 echo '============> Running OpenMP'
 KMP_AFFINITY=compact OMP_NUM_THREADS=20 ./cloverleaf_openmp > perf_out
 grep "Total Wall time" clover.out

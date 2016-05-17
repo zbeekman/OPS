@@ -16,7 +16,6 @@ rm *.h5
 $MPI_INSTALL_PATH/bin/mpirun -np 10 ./generate_file_mpi
 
 #============================ Test Cloverleaf 3D With Intel Compilers==========================================================
-#<<COMMENT
 echo '============> Running OpenMP'
 KMP_AFFINITY=compact OMP_NUM_THREADS=20 ./cloverleaf_openmp > perf_out
 grep "Total Wall time" clover.out
