@@ -146,7 +146,7 @@ else
   CHKCC			:= $(CC)
 endif
 
-TRID_INSTALL_PATH := /home/mgiles/mudalige/TriDiagonal/laszloendre-tridsolver-93670b204e2c/scalar/build
+TRID_INSTALL_PATH := /home/mgiles/mudalige/TriDiagonal/Tridiag-Git/tridsolver/scalar/build
 TRID_INC := -I$(TRID_INSTALL_PATH)/include
 TRID_LIB := -L$(TRID_INSTALL_PATH)/lib
 
@@ -169,6 +169,7 @@ hdf5_seq: mklib core $(OBJ)/ops_lib_core.o
 
 trid: mklib core $(OBJ)/ops_lib_core.o
 	$(MPICXX) $(MPIFLAGS) -I$(INC) $(TRID_INC) $(TRID_LIB) -c $(SRC)/tridiag/ops_tridiag.c -o $(OBJ)/ops_tridiag.o
+	$(MPICXX) $(MPIFLAGS) -I$(INC) $(CUDA_INC) $(TRID_INC) $(TRID_LIB) -c $(SRC)/tridiag/ops_tridiag_cuda.c -o $(OBJ)/ops_tridiag_cuda.o
 #	ar -r $(LIB)/libops_trid.a $(OBJ)/ops_tridiag.o
 
 seq: mklib core hdf5_seq $(OBJ)/ops_lib_core.o
@@ -187,7 +188,8 @@ cuda: mklib core hdf5_seq $(SRC)/cuda/ops_cuda_decl.c $(OBJ)/ops_lib_core.o
 	$(CC) $(CXXFLAGS) -I$(INC) -c $(SRC)/core/ops_dummy_singlenode.c -o $(OBJ)/ops_dummy_singlenode.o
 	ar -r $(LIB)/libops_cuda.a $(OBJ)/ops_lib_core.o $(OBJ)/ops_lazy.o $(OBJ)/ops_checkpointing.o \
 	$(OBJ)/ops_util.o $(OBJ)/ops_cuda_rt_support.o $(OBJ)/ops_cuda_rt_support_cuda.o \
-	$(OBJ)/ops_cuda_decl.o $(OBJ)/ops_dummy_singlenode.o $(OBJ)/ops_hdf5.o $(OBJ)/ops_checkpointing_strategy.o
+	$(OBJ)/ops_cuda_decl.o $(OBJ)/ops_dummy_singlenode.o $(OBJ)/ops_hdf5.o \
+	$(OBJ)/ops_checkpointing_strategy.o  $(OBJ)/ops_tridiag_cuda.o
 
 mpi: mklib core $(OBJ)/ops_lib_core.o
 	$(MPICC) $(MPIFLAGS) -I$(INC) -c $(SRC)/mpi/ops_mpi_decl.c -o $(OBJ)/ops_mpi_decl.o
