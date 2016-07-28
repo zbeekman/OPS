@@ -170,6 +170,7 @@ hdf5_seq: mklib core $(OBJ)/ops_lib_core.o
 trid: mklib core $(OBJ)/ops_lib_core.o
 	$(MPICXX) $(MPIFLAGS) -I$(INC) $(TRID_INC) $(TRID_LIB) -c $(SRC)/tridiag/ops_tridiag.c -o $(OBJ)/ops_tridiag.o
 	$(MPICXX) $(MPIFLAGS) -I$(INC) $(CUDA_INC) $(TRID_INC) $(TRID_LIB) -c $(SRC)/tridiag/ops_tridiag_cuda.c -o $(OBJ)/ops_tridiag_cuda.o
+	$(MPICXX) $(MPIFLAGS) -I$(INC) $(CUDA_INC) $(TRID_INC) $(TRID_LIB) -c $(SRC)/tridiag/ops_tridiag_mpi.c -o $(OBJ)/ops_tridiag_mpi.o
 #	ar -r $(LIB)/libops_trid.a $(OBJ)/ops_tridiag.o
 
 seq: mklib core hdf5_seq $(OBJ)/ops_lib_core.o
@@ -200,7 +201,8 @@ mpi: mklib core $(OBJ)/ops_lib_core.o
 	$(MPICC) $(MPIFLAGS) -I$(INC)  $(HDF5_INC) $(HDF5_LIB) -c $(SRC)/mpi/ops_mpi_hdf5.c -o $(OBJ)/ops_mpi_hdf5.o
 	ar -r $(LIB)/libops_mpi.a $(OBJ)/ops_lib_core.o $(OBJ)/ops_lazy.o $(OBJ)/ops_checkpointing.o \
 	$(OBJ)/ops_util.o $(OBJ)/ops_mpi_decl.o $(OBJ)/ops_mpi_rt_support.o $(OBJ)/ops_checkpointing_strategy.o \
-	$(OBJ)/ops_mpi_core.o $(OBJ)/ops_mpi_rt_support_host.o $(OBJ)/ops_mpi_partition.o $(OBJ)/ops_mpi_hdf5.o
+	$(OBJ)/ops_mpi_core.o $(OBJ)/ops_mpi_rt_support_host.o $(OBJ)/ops_mpi_partition.o $(OBJ)/ops_mpi_hdf5.o \
+	$(OBJ)/ops_tridiag_mpi.o
 
 mpi_cuda: mklib cuda $(OBJ)/ops_cuda_rt_support.o
 	$(MPICC) $(MPIFLAGS) $(CUDA_ALIGNE_FLAG) \
