@@ -64,6 +64,10 @@ void ops_read_dat_hdf5(ops_dat dat);
 void ops_dump_to_hdf5(char const *file_name);
 
 char *ops_fetch_dat_char(ops_dat dat, char *u_dat);
+void ops_get_const_hdf5(char const *name, int dim, char const *type,
+                        char *const_data, char const *file_name);
+void ops_write_const_hdf5(char const *name, int dim, char const *type,
+                          char *const_data, char const *file_name);
 
 #ifdef __cplusplus
 }

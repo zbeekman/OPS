@@ -94,9 +94,9 @@ int     CHUNK_LEFT    = 1,
 
 FILE    *g_out, *g_in;  //Files for input and output
 
-int     g_cube=1,
-        g_sphe=2,
-        g_point=3;
+int g_cube = 1;
+int g_sphe = 2;
+int g_point = 3;
 
 state_type * states; //global variable holding state info
 
@@ -167,6 +167,27 @@ int main(int argc, char **argv)
   ops_decl_const("g_point",1,"int",&g_point);
   ops_decl_const("g_cube",1,"int",&g_cube);
   ops_decl_const("dt", 1, "double", &dt );
+
+  // write constants to file
+  ops_write_const_hdf5("g_small", 1, "double", (char *)&g_small,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("g_big", 1, "double", (char *)&g_big, "cloverdata.h5");
+  ops_write_const_hdf5("dtc_safe", 1, "double", (char *)&dtc_safe,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("dtu_safe", 1, "double", (char *)&dtu_safe,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("dtv_safe", 1, "double", (char *)&dtv_safe,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("dtw_safe", 1, "double", (char *)&dtw_safe,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("dtdiv_safe", 1, "double", (char *)&dtdiv_safe,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("number_of_states", 1, "int", (char *)&number_of_states,
+                       "cloverdata.h5");
+  ops_write_const_hdf5("g_sphe", 1, "int", (char *)&g_sphe, "cloverdata.h5");
+  ops_write_const_hdf5("g_point", 1, "int", (char *)&g_point, "cloverdata.h5");
+  ops_write_const_hdf5("g_cube", 1, "int", (char *)&g_cube, "cloverdata.h5");
+  ops_write_const_hdf5("dt", 1, "double", (char *)&dt, "cloverdata.h5");
 
   start();
   /***************************************************************************
