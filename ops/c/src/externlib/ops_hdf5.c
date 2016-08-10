@@ -925,8 +925,8 @@ void ops_get_const_hdf5(char const *name, int dim, char const *type,
 /*******************************************************************************
 * Routine to write a constant to a named hdf5 file
 *******************************************************************************/
-void ops_write_const_hdf5_char(char const *name, int size, char const *type,
-                               char *const_data, char const *file_name) {
+void ops_write_const_hdf5(char const *name, int size, char const *type,
+                          char *const_data, char const *file_name) {
 
   // HDF5 APIs definitions
   hid_t file_id;   // file identifier
