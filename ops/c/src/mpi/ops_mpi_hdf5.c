@@ -494,6 +494,7 @@ void ops_fetch_halo_hdf5_file(ops_halo halo, char const *file_name) {
   H5Gclose(group_id);
   H5Pclose(plist_id);
   H5Fclose(file_id);
+  MPI_Comm_free(&OPS_MPI_HDF5_WORLD);
 }
 
 /*******************************************************************************
@@ -1052,6 +1053,7 @@ ops_block ops_decl_block_hdf5(int dims, const char *block_name,
 
   H5Pclose(plist_id);
   H5Fclose(file_id);
+  MPI_Comm_free(&OPS_MPI_HDF5_WORLD);
 
   return ops_decl_block(read_dims, block_name);
 }
@@ -1157,6 +1159,7 @@ ops_stencil ops_decl_stencil_hdf5(int dims, int points,
   H5LTread_dataset_int(file_id, stencil_name, read_sten);
   H5Pclose(plist_id);
   H5Fclose(file_id);
+  MPI_Comm_free(&OPS_MPI_HDF5_WORLD);
 
   // use decl_strided stencil for both normal and strided stencils
   return ops_decl_strided_stencil(read_dims, read_points, read_sten,
@@ -1277,6 +1280,7 @@ ops_halo ops_decl_halo_hdf5(ops_dat from, ops_dat to, char const *file_name) {
 
   H5Pclose(plist_id);
   H5Fclose(file_id);
+  MPI_Comm_free(&OPS_MPI_HDF5_WORLD);
 
   return ops_decl_halo(from, to, read_iter_size, read_from_base, read_to_base,
                        read_from_dir, read_to_dir);
@@ -1770,13 +1774,6 @@ char *ops_fetch_dat_char(ops_dat dat, char *u_dat) {
       t_size *= size[d];
     u_dat = (char *)malloc(t_size * dat->elem_size);
 
-    // create new communicator
-    int my_rank, comm_size;
-    // use the communicator for MPI procs holding this block
-    MPI_Comm_dup(sb->comm1, &OPS_MPI_HDF5_WORLD);
-    MPI_Comm_rank(OPS_MPI_HDF5_WORLD, &my_rank);
-    MPI_Comm_size(OPS_MPI_HDF5_WORLD, &comm_size);
-
     if (block->dims == 1)
       remove_mpi_halos1D(dat, size, l_disp, u_dat);
     else if (block->dims == 2)
@@ -1788,5 +1785,87 @@ char *ops_fetch_dat_char(ops_dat dat, char *u_dat) {
     else if (block->dims == 5)
       remove_mpi_halos5D(dat, size, l_disp, u_dat);
   }
+
   return u_dat;
+}
+
+/*******************************************************************************
+* Routine to read in a constant from a named hdf5 file
+*******************************************************************************/
+void ops_get_const_hdf5(char const *name, int dim, char const *type,
+                        char *const_data, char const *file_name) {}
+
+/*******************************************************************************
+* Routine to write a constant to a named hdf5 file
+*******************************************************************************/
+void ops_write_const_hdf5(char const *name, int size, char const *type,
+                          char *const_data, char const *file_name) {
+
+  // HDF5 APIs definitions
+  hid_t file_id;   // file identifier
+  hid_t dset_id;   // dataset identifier
+  hid_t dataspace; // data space identifier
+  hid_t plist_id;  // property list identifier
+
+  // MPI variables
+  MPI_Info info = MPI_INFO_NULL;
+
+  // use the communicator for MPI procs holding this block
+  MPI_Comm_dup(MPI_COMM_WORLD, &OPS_MPI_HDF5_WORLD);
+
+  // Set up file access property list with parallel I/O access
+  plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fapl_mpio(plist_id, OPS_MPI_HDF5_WORLD, info);
+
+  if (file_exist(file_name) == 0) {
+    ops_printf("File %s does not exist .... creating file\n", file_name);
+    FILE *fp;
+    fp = fopen(file_name, "w");
+    fclose(fp);
+
+    // Create a new file
+    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+    H5Fclose(file_id);
+  }
+
+  file_id = H5Fopen(file_name, H5F_ACC_RDWR, plist_id);
+  H5Pclose(plist_id);
+
+  if (H5Lexists(file_id, name, H5P_DEFAULT) == 0) {
+    ops_printf("ops_write_const_hdf5: constant %s does not exists in the "
+               "file %s ... creating constant\n",
+               name, file_name);
+
+    int dim = 1; // only 1D values can be written -- for now
+    hsize_t sizes_of_const[1] = {size};
+
+    if (strcmp(type, "double") == 0 || strcmp(type, "real(8)") == 0)
+      H5LTmake_dataset(file_id, name, dim, sizes_of_const, H5T_NATIVE_DOUBLE,
+                       const_data);
+    else if (strcmp(type, "float") == 0 || strcmp(type, "real(4)") == 0 ||
+             strcmp(type, "real") == 0)
+      H5LTmake_dataset(file_id, name, dim, sizes_of_const, H5T_NATIVE_FLOAT,
+                       const_data);
+    else if (strcmp(type, "int") == 0 || strcmp(type, "int(4)") == 0 ||
+             strcmp(type, "integer(4)") == 0)
+      H5LTmake_dataset(file_id, name, dim, sizes_of_const, H5T_NATIVE_INT,
+                       const_data);
+    else if (strcmp(type, "long") == 0)
+      H5LTmake_dataset(file_id, name, dim, sizes_of_const, H5T_NATIVE_LONG,
+                       const_data);
+    else if (strcmp(type, "long long") == 0)
+      H5LTmake_dataset(file_id, name, dim, sizes_of_const, H5T_NATIVE_LLONG,
+                       const_data);
+    else {
+      printf("Error: Unknown type in ops_write_const_hdf5()\n");
+      exit(-2);
+    }
+  }
+
+  /*attach attributes to constant*/
+  H5LTset_attribute_int(file_id, name, "size", &size, 1);    // size
+  H5LTset_attribute_string(file_id, name, "ops_type", type); // ops type
+
+  H5Fclose(file_id);
+  MPI_Comm_free(&OPS_MPI_HDF5_WORLD);
 }
