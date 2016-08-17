@@ -53,6 +53,10 @@
 #include "ops_macros.h"
 #include "ops_util.h"
 
+#ifndef OPS_ALIGNMENT
+#define OPS_ALIGNMENT 64
+#endif
+
 /*
 * enum list for ops_par_loop
 */
@@ -450,6 +454,14 @@ void ops_halo_copy_tobuf(char *dest, int dest_offset, ops_dat src, int rx_s,
 /* lazy execution */
 void ops_enqueue_kernel(ops_kernel_descriptor *desc);
 void ops_execute();
+
+/*******************************************************************************
+* Memory allocation functions
+*******************************************************************************/
+void* ops_malloc (size_t size);
+void* ops_realloc (void *ptr, size_t size);
+void  ops_free (void *ptr);
+void* ops_calloc (size_t num, size_t size);
 
 #ifdef __cplusplus
 }
