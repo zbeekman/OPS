@@ -47,7 +47,7 @@ else
 ifeq ($(OPS_COMPILER),intel)
   CC 		:= icc -std=c99
 ifdef DEBUG
-  CCFLAGS 	:= -O0 -g
+  CCFLAGS 	:= -O0 -g -xCORE_AVX2
 else
   CCFLAGS 	:= -O3 -xHost #-qopenmp #vec-report -xAVX
 endif
