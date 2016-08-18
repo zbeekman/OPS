@@ -561,9 +561,10 @@ void ops_fetch_dat_hdf5_file(ops_dat dat, char const *file_name) {
     }
 
     int t_size = 1;
-    for (int d = 0; d < dat->block->dims; d++) t_size *= size[d];
-    //printf("t_size = %d ",t_size);
-    char* data = (char *)ops_malloc(t_size*dat->elem_size);
+    for (int d = 0; d < dat->block->dims; d++)
+      t_size *= size[d];
+    // printf("t_size = %d ",t_size);
+    char *data = (char *)ops_malloc(t_size * dat->elem_size);
 
     // create new communicator
     int my_rank, comm_size;
@@ -1526,7 +1527,8 @@ void ops_read_dat_hdf5(ops_dat dat) {
     }
 
     int t_size = 1;
-    for (int d = 0; d < dat->block->dims; d++) t_size *= size[d];
+    for (int d = 0; d < dat->block->dims; d++)
+      t_size *= size[d];
     char *data = (char *)ops_malloc(t_size * dat->elem_size);
     dat->mem = t_size * dat->elem_size;
 
@@ -1535,19 +1537,16 @@ void ops_read_dat_hdf5(ops_dat dat) {
     size[0] = size[0] * dat->dim;
     disp[0] = disp[0] * dat->dim;
 
-    //make sure we multiply by the number of
-    //data values per element (i.e. dat->dim) to get full size of the data
-    size[0] = size[0]*dat->dim;
-    disp[0] = disp[0]*dat->dim;
+    if (block->dims == 1)
+      gbl_size[0] = gbl_size[0] * dat->dim; //-- this needs to be tested for 1D
+    else if (block->dims == 2)
+      gbl_size[1] = gbl_size[1] *
+                    dat->dim; //**note we are using [1] instead of [0] here !!
+    else if (block->dims == 3)
+      gbl_size[0] =
+          gbl_size[0] * dat->dim; //**note that for 3D we are using [0] here !!
 
-    if(block->dims == 1)
-      gbl_size[0] = gbl_size[0]*dat->dim; //-- this needs to be tested for 1D
-    else if(block->dims == 2)
-      gbl_size[1] = gbl_size[1]*dat->dim; //**note we are using [1] instead of [0] here !!
-    else if(block->dims == 3)
-      gbl_size[0] = gbl_size[0]*dat->dim; //**note that for 3D we are using [0] here !!
-
-    //create new communicator
+    // create new communicator
     int my_rank, comm_size;
     // use the communicator for MPI procs holding this block
     MPI_Comm_dup(sb->comm1, &OPS_MPI_HDF5_WORLD);
@@ -1752,8 +1751,9 @@ char *ops_fetch_dat_char(ops_dat dat, char *u_dat) {
     }
 
     int t_size = 1;
-    for (int d = 0; d < dat->block->dims; d++) t_size *= size[d];
-    u_dat = (char *)ops_malloc(t_size*dat->elem_size);
+    for (int d = 0; d < dat->block->dims; d++)
+      t_size *= size[d];
+    u_dat = (char *)ops_malloc(t_size * dat->elem_size);
 
     // create new communicator
     int my_rank, comm_size;

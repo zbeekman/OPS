@@ -197,10 +197,11 @@ void ops_set_dirtybit_device(ops_arg *args, int nargs) {
 // routine to fetch data from GPU to CPU (with transposing SoA to AoS if needed)
 //
 
-void ops_cuda_get_data( ops_dat dat )
-{
-  if (dat->dirty_hd == 2) dat->dirty_hd = 0;
-  else return;
+void ops_cuda_get_data(ops_dat dat) {
+  if (dat->dirty_hd == 2)
+    dat->dirty_hd = 0;
+  else
+    return;
   printf("in here ************\n");
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
@@ -222,10 +223,9 @@ void reallocConstArrays(int consts_bytes) {
       cutilSafeCall(cudaFree(OPS_consts_d));
     }
     OPS_consts_bytes = 4 * consts_bytes; // 4 is arbitrary, more than needed
-    cudaMallocHost ((void**)&OPS_gbl_prev, OPS_consts_bytes );
-    OPS_consts_h = (char * ) ops_malloc(OPS_consts_bytes );
-    cutilSafeCall (cudaMalloc(( void ** )&OPS_consts_d,
-                                 OPS_consts_bytes ) );
+    cudaMallocHost((void **)&OPS_gbl_prev, OPS_consts_bytes);
+    OPS_consts_h = (char *)ops_malloc(OPS_consts_bytes);
+    cutilSafeCall(cudaMalloc((void **)&OPS_consts_d, OPS_consts_bytes));
   }
 }
 
@@ -236,9 +236,8 @@ void reallocReductArrays(int reduct_bytes) {
       cutilSafeCall(cudaFree(OPS_reduct_d));
     }
     OPS_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
-    OPS_reduct_h = ( char * ) ops_malloc ( OPS_reduct_bytes );
-    cutilSafeCall ( cudaMalloc ( ( void ** ) &OPS_reduct_d,
-                                 OPS_reduct_bytes ) );
+    OPS_reduct_h = (char *)ops_malloc(OPS_reduct_bytes);
+    cutilSafeCall(cudaMalloc((void **)&OPS_reduct_d, OPS_reduct_bytes));
   }
 }
 
