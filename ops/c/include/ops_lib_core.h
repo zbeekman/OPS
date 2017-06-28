@@ -301,6 +301,7 @@ typedef struct ops_kernel_descriptor {
 extern int OPS_hybrid_gpu, OPS_gpu_direct;
 extern int OPS_kern_max, OPS_kern_curr;
 extern ops_kernel *OPS_kernels;
+extern int ops_managed;
 
 extern int ops_current_kernel;
 

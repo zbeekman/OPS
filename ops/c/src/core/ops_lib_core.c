@@ -63,6 +63,7 @@ int ops_enable_tiling = 0;
 int ops_cache_size = 0;
 int ops_tiling_mpidepth = -1;
 extern double ops_tiled_halo_exchange_time;
+int ops_managed = 0;
 
 /*
 * Lists of blocks and dats declared in an OPS programs
@@ -153,6 +154,11 @@ void ops_set_args(int argc, char *argv) {
     strncpy(temp, pch, 20);
     ops_cache_size = atoi(temp + 15);
     ops_printf("\n Cache size per process = %d \n", ops_cache_size);
+  }
+  pch = strstr(argv, "OPS_CUDA_UNIFIED");
+  if (pch != NULL) {
+    ops_managed = 1;
+    ops_printf("\n Using CUDA unified memory\n");
   }
   pch = strstr(argv, "OPS_TILING");
   if (pch != NULL) {

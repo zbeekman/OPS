@@ -138,13 +138,20 @@ void cutilDeviceInit(int argc, char **argv) {
 
 void ops_cpHostToDevice(void **data_d, void **data_h, int size) {
   // if (!OPS_hybrid_gpu) return;
-  cutilSafeCall(cudaMalloc(data_d, size));
-  cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
-  cutilSafeCall(cudaDeviceSynchronize());
+  if (ops_managed) {
+    cudaMallocManaged(data_d, size, cudaMemAttachGlobal);
+    memcpy(*data_d, *data_h, size);
+    free(*data_h);
+    *data_h = *data_d;
+  } else {
+    cutilSafeCall(cudaMalloc(data_d, size));
+    cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaDeviceSynchronize());
+  }
 }
 
 void ops_download_dat(ops_dat dat) {
-
+  if (ops_managed) return; 
   // if (!OPS_hybrid_gpu) return;
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
@@ -155,7 +162,7 @@ void ops_download_dat(ops_dat dat) {
 }
 
 void ops_upload_dat(ops_dat dat) {
-
+  if (ops_managed) return;
   // if (!OPS_hybrid_gpu) return;
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
@@ -202,6 +209,8 @@ void ops_cuda_get_data(ops_dat dat) {
     dat->dirty_hd = 0;
   else
     return;
+  if (ops_managed) return;
+
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
     bytes = bytes * dat->size[i];
@@ -281,6 +290,7 @@ void ops_cuda_exit() {
   ops_dat_entry *item;
   TAILQ_FOREACH(item, &OPS_dat_list, entries) {
     cutilSafeCall(cudaFree((item->dat)->data_d));
+    if (ops_managed) (item->dat)->data = NULL;
   }
 
 //  cudaDeviceReset();
