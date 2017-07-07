@@ -64,7 +64,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_initialise_chunk_kernel_cellx_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -125,11 +127,11 @@ void ops_par_loop_initialise_chunk_kernel_cellx_execute(ops_kernel_descriptor *d
   int xdim2 = args[2].dat->size[0];
 
   if (xdim0 != xdim0_initialise_chunk_kernel_cellx_h || xdim1 != xdim1_initialise_chunk_kernel_cellx_h || xdim2 != xdim2_initialise_chunk_kernel_cellx_h) {
-    cudaMemcpyToSymbol( xdim0_initialise_chunk_kernel_cellx, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_initialise_chunk_kernel_cellx, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_initialise_chunk_kernel_cellx_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_initialise_chunk_kernel_cellx, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_initialise_chunk_kernel_cellx, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_initialise_chunk_kernel_cellx_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_initialise_chunk_kernel_cellx, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_initialise_chunk_kernel_cellx, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_initialise_chunk_kernel_cellx_h = xdim2;
   }
 
@@ -195,11 +197,11 @@ void ops_par_loop_initialise_chunk_kernel_cellx_execute(ops_kernel_descriptor *d
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_initialise_chunk_kernel_cellx<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_initialise_chunk_kernel_cellx<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[39].time += t1-t2;
   }

@@ -139,7 +139,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_viscosity_kernel_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -208,19 +210,19 @@ void ops_par_loop_viscosity_kernel_execute(ops_kernel_descriptor *desc) {
   int xdim6 = args[6].dat->size[0];
 
   if (xdim0 != xdim0_viscosity_kernel_h || xdim1 != xdim1_viscosity_kernel_h || xdim2 != xdim2_viscosity_kernel_h || xdim3 != xdim3_viscosity_kernel_h || xdim4 != xdim4_viscosity_kernel_h || xdim5 != xdim5_viscosity_kernel_h || xdim6 != xdim6_viscosity_kernel_h) {
-    cudaMemcpyToSymbol( xdim0_viscosity_kernel, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_viscosity_kernel, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_viscosity_kernel_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_viscosity_kernel, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_viscosity_kernel, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_viscosity_kernel_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_viscosity_kernel, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_viscosity_kernel, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_viscosity_kernel_h = xdim2;
-    cudaMemcpyToSymbol( xdim3_viscosity_kernel, &xdim3, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim3_viscosity_kernel, &xdim3, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim3_viscosity_kernel_h = xdim3;
-    cudaMemcpyToSymbol( xdim4_viscosity_kernel, &xdim4, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim4_viscosity_kernel, &xdim4, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim4_viscosity_kernel_h = xdim4;
-    cudaMemcpyToSymbol( xdim5_viscosity_kernel, &xdim5, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim5_viscosity_kernel, &xdim5, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim5_viscosity_kernel_h = xdim5;
-    cudaMemcpyToSymbol( xdim6_viscosity_kernel, &xdim6, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim6_viscosity_kernel, &xdim6, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim6_viscosity_kernel_h = xdim6;
   }
 
@@ -338,13 +340,13 @@ void ops_par_loop_viscosity_kernel_execute(ops_kernel_descriptor *desc) {
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_viscosity_kernel<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_viscosity_kernel<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],
            (double *)p_a[4], (double *)p_a[5],
            (double *)p_a[6],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[34].time += t1-t2;
   }

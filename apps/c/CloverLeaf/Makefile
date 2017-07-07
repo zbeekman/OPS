@@ -133,7 +133,7 @@ ifeq ($(NV_ARCH),Fermi)
 	CODE_GEN_CUDA=-gencode arch=compute_20,code=sm_21
 else
 ifeq ($(NV_ARCH),Kepler)
-	CODE_GEN_CUDA=-gencode arch=compute_35,code=sm_35
+	CODE_GEN_CUDA=-gencode arch=compute_60,code=sm_60
 endif
 endif
 
@@ -141,7 +141,7 @@ endif
 ifdef DEBUG
   NVCC_FLAGS = -O0 -g -G
 else
-  NVCC_FLAGS = -O3 -restrict --use_fast_math --fmad false
+  NVCC_FLAGS = -O3 -restrict --use_fast_math #--fmad false
 endif
 
 #switch on FMA instructions in OpenCL

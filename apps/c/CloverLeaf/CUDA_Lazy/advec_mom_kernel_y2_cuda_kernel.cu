@@ -71,7 +71,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_advec_mom_kernel_y2_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -134,13 +136,13 @@ void ops_par_loop_advec_mom_kernel_y2_execute(ops_kernel_descriptor *desc) {
   int xdim3 = args[3].dat->size[0];
 
   if (xdim0 != xdim0_advec_mom_kernel_y2_h || xdim1 != xdim1_advec_mom_kernel_y2_h || xdim2 != xdim2_advec_mom_kernel_y2_h || xdim3 != xdim3_advec_mom_kernel_y2_h) {
-    cudaMemcpyToSymbol( xdim0_advec_mom_kernel_y2, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_advec_mom_kernel_y2, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_advec_mom_kernel_y2_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_advec_mom_kernel_y2, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_advec_mom_kernel_y2, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_advec_mom_kernel_y2_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_advec_mom_kernel_y2, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_advec_mom_kernel_y2, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_advec_mom_kernel_y2_h = xdim2;
-    cudaMemcpyToSymbol( xdim3_advec_mom_kernel_y2, &xdim3, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim3_advec_mom_kernel_y2, &xdim3, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim3_advec_mom_kernel_y2_h = xdim3;
   }
 
@@ -219,11 +221,11 @@ void ops_par_loop_advec_mom_kernel_y2_execute(ops_kernel_descriptor *desc) {
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_advec_mom_kernel_y2<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_advec_mom_kernel_y2<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[18].time += t1-t2;
   }

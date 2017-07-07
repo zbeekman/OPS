@@ -182,7 +182,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_PdV_kernel_nopredict_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -265,33 +267,33 @@ void ops_par_loop_PdV_kernel_nopredict_execute(ops_kernel_descriptor *desc) {
   int xdim13 = args[13].dat->size[0];
 
   if (xdim0 != xdim0_PdV_kernel_nopredict_h || xdim1 != xdim1_PdV_kernel_nopredict_h || xdim2 != xdim2_PdV_kernel_nopredict_h || xdim3 != xdim3_PdV_kernel_nopredict_h || xdim4 != xdim4_PdV_kernel_nopredict_h || xdim5 != xdim5_PdV_kernel_nopredict_h || xdim6 != xdim6_PdV_kernel_nopredict_h || xdim7 != xdim7_PdV_kernel_nopredict_h || xdim8 != xdim8_PdV_kernel_nopredict_h || xdim9 != xdim9_PdV_kernel_nopredict_h || xdim10 != xdim10_PdV_kernel_nopredict_h || xdim11 != xdim11_PdV_kernel_nopredict_h || xdim12 != xdim12_PdV_kernel_nopredict_h || xdim13 != xdim13_PdV_kernel_nopredict_h) {
-    cudaMemcpyToSymbol( xdim0_PdV_kernel_nopredict, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_PdV_kernel_nopredict, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_PdV_kernel_nopredict_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_PdV_kernel_nopredict, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_PdV_kernel_nopredict, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_PdV_kernel_nopredict_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_PdV_kernel_nopredict, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_PdV_kernel_nopredict, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_PdV_kernel_nopredict_h = xdim2;
-    cudaMemcpyToSymbol( xdim3_PdV_kernel_nopredict, &xdim3, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim3_PdV_kernel_nopredict, &xdim3, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim3_PdV_kernel_nopredict_h = xdim3;
-    cudaMemcpyToSymbol( xdim4_PdV_kernel_nopredict, &xdim4, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim4_PdV_kernel_nopredict, &xdim4, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim4_PdV_kernel_nopredict_h = xdim4;
-    cudaMemcpyToSymbol( xdim5_PdV_kernel_nopredict, &xdim5, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim5_PdV_kernel_nopredict, &xdim5, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim5_PdV_kernel_nopredict_h = xdim5;
-    cudaMemcpyToSymbol( xdim6_PdV_kernel_nopredict, &xdim6, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim6_PdV_kernel_nopredict, &xdim6, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim6_PdV_kernel_nopredict_h = xdim6;
-    cudaMemcpyToSymbol( xdim7_PdV_kernel_nopredict, &xdim7, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim7_PdV_kernel_nopredict, &xdim7, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim7_PdV_kernel_nopredict_h = xdim7;
-    cudaMemcpyToSymbol( xdim8_PdV_kernel_nopredict, &xdim8, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim8_PdV_kernel_nopredict, &xdim8, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim8_PdV_kernel_nopredict_h = xdim8;
-    cudaMemcpyToSymbol( xdim9_PdV_kernel_nopredict, &xdim9, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim9_PdV_kernel_nopredict, &xdim9, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim9_PdV_kernel_nopredict_h = xdim9;
-    cudaMemcpyToSymbol( xdim10_PdV_kernel_nopredict, &xdim10, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim10_PdV_kernel_nopredict, &xdim10, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim10_PdV_kernel_nopredict_h = xdim10;
-    cudaMemcpyToSymbol( xdim11_PdV_kernel_nopredict, &xdim11, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim11_PdV_kernel_nopredict, &xdim11, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim11_PdV_kernel_nopredict_h = xdim11;
-    cudaMemcpyToSymbol( xdim12_PdV_kernel_nopredict, &xdim12, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim12_PdV_kernel_nopredict, &xdim12, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim12_PdV_kernel_nopredict_h = xdim12;
-    cudaMemcpyToSymbol( xdim13_PdV_kernel_nopredict, &xdim13, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim13_PdV_kernel_nopredict, &xdim13, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim13_PdV_kernel_nopredict_h = xdim13;
   }
 
@@ -500,7 +502,7 @@ void ops_par_loop_PdV_kernel_nopredict_execute(ops_kernel_descriptor *desc) {
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_PdV_kernel_nopredict<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_PdV_kernel_nopredict<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],
            (double *)p_a[4], (double *)p_a[5],
            (double *)p_a[6], (double *)p_a[7],
@@ -509,7 +511,7 @@ void ops_par_loop_PdV_kernel_nopredict_execute(ops_kernel_descriptor *desc) {
            (double *)p_a[12], (double *)p_a[13],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[5].time += t1-t2;
   }

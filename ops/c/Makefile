@@ -49,7 +49,7 @@ ifeq ($(OPS_COMPILER),intel)
 ifdef DEBUG
   CCFLAGS 	:= -O0 -g
 else
-  CCFLAGS 	:= -O3 -xHost #-qopenmp #vec-report -xAVX
+  CCFLAGS 	:= -O3 -xHost -qopenmp #vec-report -xAVX
 endif
   CXX 		:= icpc
   CXXFLAGS 	:= $(CCFLAGS)
@@ -129,7 +129,7 @@ endif
 
 NVCC  := $(CUDA_INSTALL_PATH)/bin/nvcc
 ifndef DEBUG
-    NVCCFLAGS := -O3 -arch=sm_35 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
+    NVCCFLAGS := -O3 -arch=sm_60 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
     #NVCCFLAGS := -O3 -arch=sm_21 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
 else
     NVCCFLAGS := -O0 -g -G -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX

@@ -52,7 +52,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_update_halo_kernel2_yvel_plus_2_a_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -112,9 +114,9 @@ void ops_par_loop_update_halo_kernel2_yvel_plus_2_a_execute(ops_kernel_descripto
   int xdim1 = args[1].dat->size[0];
 
   if (xdim0 != xdim0_update_halo_kernel2_yvel_plus_2_a_h || xdim1 != xdim1_update_halo_kernel2_yvel_plus_2_a_h) {
-    cudaMemcpyToSymbol( xdim0_update_halo_kernel2_yvel_plus_2_a, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_update_halo_kernel2_yvel_plus_2_a, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_update_halo_kernel2_yvel_plus_2_a_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_update_halo_kernel2_yvel_plus_2_a, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_update_halo_kernel2_yvel_plus_2_a, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_update_halo_kernel2_yvel_plus_2_a_h = xdim1;
   }
 
@@ -178,11 +180,11 @@ void ops_par_loop_update_halo_kernel2_yvel_plus_2_a_execute(ops_kernel_descripto
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_update_halo_kernel2_yvel_plus_2_a<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_update_halo_kernel2_yvel_plus_2_a<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (int *)arg2.data_d,x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[64].time += t1-t2;
   }

@@ -53,7 +53,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_advec_mom_kernel_mass_flux_y_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -112,9 +114,9 @@ void ops_par_loop_advec_mom_kernel_mass_flux_y_execute(ops_kernel_descriptor *de
   int xdim1 = args[1].dat->size[0];
 
   if (xdim0 != xdim0_advec_mom_kernel_mass_flux_y_h || xdim1 != xdim1_advec_mom_kernel_mass_flux_y_h) {
-    cudaMemcpyToSymbol( xdim0_advec_mom_kernel_mass_flux_y, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_advec_mom_kernel_mass_flux_y, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_advec_mom_kernel_mass_flux_y_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_advec_mom_kernel_mass_flux_y, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_advec_mom_kernel_mass_flux_y, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_advec_mom_kernel_mass_flux_y_h = xdim1;
   }
 
@@ -167,10 +169,10 @@ void ops_par_loop_advec_mom_kernel_mass_flux_y_execute(ops_kernel_descriptor *de
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_advec_mom_kernel_mass_flux_y<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],x_size, y_size);
+  ops_advec_mom_kernel_mass_flux_y<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[23].time += t1-t2;
   }

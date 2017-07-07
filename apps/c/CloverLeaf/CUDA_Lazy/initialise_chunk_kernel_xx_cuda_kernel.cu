@@ -46,7 +46,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_initialise_chunk_kernel_xx_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -112,7 +114,7 @@ void ops_par_loop_initialise_chunk_kernel_xx_execute(ops_kernel_descriptor *desc
   int xdim0 = args[0].dat->size[0];
 
   if (xdim0 != xdim0_initialise_chunk_kernel_xx_h) {
-    cudaMemcpyToSymbol( xdim0_initialise_chunk_kernel_xx, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_initialise_chunk_kernel_xx, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_initialise_chunk_kernel_xx_h = xdim0;
   }
 
@@ -152,10 +154,10 @@ void ops_par_loop_initialise_chunk_kernel_xx_execute(ops_kernel_descriptor *desc
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_initialise_chunk_kernel_xx<<<grid, tblock >>> (  (int *)p_a[0], arg_idx[0], arg_idx[1],x_size, y_size);
+  ops_initialise_chunk_kernel_xx<<<grid, tblock, 0, stream >>> (  (int *)p_a[0], arg_idx[0], arg_idx[1],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[35].time += t1-t2;
   }

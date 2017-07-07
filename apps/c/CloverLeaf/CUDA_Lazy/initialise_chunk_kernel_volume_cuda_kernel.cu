@@ -84,7 +84,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_initialise_chunk_kernel_volume_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -149,15 +151,15 @@ void ops_par_loop_initialise_chunk_kernel_volume_execute(ops_kernel_descriptor *
   int xdim4 = args[4].dat->size[0];
 
   if (xdim0 != xdim0_initialise_chunk_kernel_volume_h || xdim1 != xdim1_initialise_chunk_kernel_volume_h || xdim2 != xdim2_initialise_chunk_kernel_volume_h || xdim3 != xdim3_initialise_chunk_kernel_volume_h || xdim4 != xdim4_initialise_chunk_kernel_volume_h) {
-    cudaMemcpyToSymbol( xdim0_initialise_chunk_kernel_volume, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_initialise_chunk_kernel_volume, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_initialise_chunk_kernel_volume_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_initialise_chunk_kernel_volume, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_initialise_chunk_kernel_volume, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_initialise_chunk_kernel_volume_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_initialise_chunk_kernel_volume, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_initialise_chunk_kernel_volume, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_initialise_chunk_kernel_volume_h = xdim2;
-    cudaMemcpyToSymbol( xdim3_initialise_chunk_kernel_volume, &xdim3, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim3_initialise_chunk_kernel_volume, &xdim3, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim3_initialise_chunk_kernel_volume_h = xdim3;
-    cudaMemcpyToSymbol( xdim4_initialise_chunk_kernel_volume, &xdim4, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim4_initialise_chunk_kernel_volume, &xdim4, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim4_initialise_chunk_kernel_volume_h = xdim4;
   }
 
@@ -249,12 +251,12 @@ void ops_par_loop_initialise_chunk_kernel_volume_execute(ops_kernel_descriptor *
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_initialise_chunk_kernel_volume<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_initialise_chunk_kernel_volume<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],
            (double *)p_a[4],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[41].time += t1-t2;
   }

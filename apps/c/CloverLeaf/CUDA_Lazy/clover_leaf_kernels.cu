@@ -94,6 +94,7 @@ int size, char *dat, char const *name){
   }
 }
 
+extern cudaStream_t stream;
 
 //user kernel files
 #include "revert_kernel_cuda_kernel.cu"

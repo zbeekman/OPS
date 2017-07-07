@@ -85,7 +85,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_advec_mom_kernel_post_pre_advec_y_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -150,15 +152,15 @@ void ops_par_loop_advec_mom_kernel_post_pre_advec_y_execute(ops_kernel_descripto
   int xdim4 = args[4].dat->size[0];
 
   if (xdim0 != xdim0_advec_mom_kernel_post_pre_advec_y_h || xdim1 != xdim1_advec_mom_kernel_post_pre_advec_y_h || xdim2 != xdim2_advec_mom_kernel_post_pre_advec_y_h || xdim3 != xdim3_advec_mom_kernel_post_pre_advec_y_h || xdim4 != xdim4_advec_mom_kernel_post_pre_advec_y_h) {
-    cudaMemcpyToSymbol( xdim0_advec_mom_kernel_post_pre_advec_y, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_advec_mom_kernel_post_pre_advec_y, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_advec_mom_kernel_post_pre_advec_y_h = xdim0;
-    cudaMemcpyToSymbol( xdim1_advec_mom_kernel_post_pre_advec_y, &xdim1, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim1_advec_mom_kernel_post_pre_advec_y, &xdim1, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim1_advec_mom_kernel_post_pre_advec_y_h = xdim1;
-    cudaMemcpyToSymbol( xdim2_advec_mom_kernel_post_pre_advec_y, &xdim2, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim2_advec_mom_kernel_post_pre_advec_y, &xdim2, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim2_advec_mom_kernel_post_pre_advec_y_h = xdim2;
-    cudaMemcpyToSymbol( xdim3_advec_mom_kernel_post_pre_advec_y, &xdim3, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim3_advec_mom_kernel_post_pre_advec_y, &xdim3, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim3_advec_mom_kernel_post_pre_advec_y_h = xdim3;
-    cudaMemcpyToSymbol( xdim4_advec_mom_kernel_post_pre_advec_y, &xdim4, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim4_advec_mom_kernel_post_pre_advec_y, &xdim4, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim4_advec_mom_kernel_post_pre_advec_y_h = xdim4;
   }
 
@@ -250,12 +252,12 @@ void ops_par_loop_advec_mom_kernel_post_pre_advec_y_execute(ops_kernel_descripto
 
 
   //call kernel wrapper function, passing in pointers to data
-  ops_advec_mom_kernel_post_pre_advec_y<<<grid, tblock >>> (  (double *)p_a[0], (double *)p_a[1],
+  ops_advec_mom_kernel_post_pre_advec_y<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],
            (double *)p_a[4],x_size, y_size);
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[24].time += t1-t2;
   }

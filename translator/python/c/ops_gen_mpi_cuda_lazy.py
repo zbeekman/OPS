@@ -510,10 +510,10 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
 
     for n in range (0, nargs):
       if arg_typ[n] == 'ops_arg_dat':
-        code('cudaMemcpyToSymbol( xdim'+str(n)+'_'+name+', &xdim'+str(n)+', sizeof(int) );')
+        code('cudaMemcpyToSymbolAsync( xdim'+str(n)+'_'+name+', &xdim'+str(n)+', sizeof(int),0,cudaMemcpyHostToDevice,stream );')
         code('xdim'+str(n)+'_'+name+'_h = xdim'+str(n)+';')
         if NDIM==3:
-          code('cudaMemcpyToSymbol( ydim'+str(n)+'_'+name+', &ydim'+str(n)+', sizeof(int) );')
+          code('cudaMemcpyToSymbolAsync( ydim'+str(n)+'_'+name+', &ydim'+str(n)+', sizeof(int),0,cudaMemcpyHostToDevice,stream );')
           code('ydim'+str(n)+'_'+name+'_h = ydim'+str(n)+';')
     ENDIF()
 
@@ -695,9 +695,9 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
     comm('call kernel wrapper function, passing in pointers to data')
     n_per_line = 2
     if GBL_INC == True or GBL_MIN == True or GBL_MAX == True or GBL_WRITE == True:
-      text = 'ops_'+name+'<<<grid, tblock, nshared >>> ( '
+      text = 'ops_'+name+'<<<grid, tblock, nshared, stream >>> ( '
     else:
-      text = 'ops_'+name+'<<<grid, tblock >>> ( '
+      text = 'ops_'+name+'<<<grid, tblock, 0, stream >>> ( '
     for n in range (0, nargs):
       if arg_typ[n] == 'ops_arg_dat':
         text = text +' ('+typs[n]+' *)p_a['+str(n)+'],'
@@ -749,7 +749,7 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
         code('')
 
     IF('OPS_diags>1')
-    code('cutilSafeCall(cudaDeviceSynchronize());')
+    code('cutilSafeCall(cudaStreamSynchronize(stream));')
     code('ops_timers_core(&c1,&t1);')
     code('OPS_kernels['+str(nk)+'].time += t1-t2;')
     ENDIF()
@@ -906,7 +906,7 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
   config.depth = config.depth - 2
   code('}')
   code('')
-
+  code('extern cudaStream_t stream;')
   code('')
   comm('user kernel files')
 

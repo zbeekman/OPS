@@ -133,8 +133,8 @@ endif
 ifeq ($(NV_ARCH),Fermi)
 	CODE_GEN_CUDA=-gencode arch=compute_20,code=sm_21
 else
-ifeq ($(NV_ARCH),Kepler)
-	CODE_GEN_CUDA=-gencode arch=compute_35,code=sm_35
+ifeq ($(NV_ARCH),Pascal)
+	CODE_GEN_CUDA=-gencode arch=compute_60,code=sm_60
 endif
 endif
 
@@ -142,7 +142,7 @@ endif
 ifdef DEBUG
   NVCC_FLAGS = -O0 -g -G
 else
-  NVCC_FLAGS = -O3 -restrict --fmad false
+  NVCC_FLAGS = -O3 -restrict #--fmad false
 endif
 
 #switch on FMA instructions in OpenCL
@@ -287,24 +287,24 @@ openacc_c_obj_list = $(shell find OpenACC/ -name "*_c.c" | sed s/\\.c/\\.o/g | t
 
 
 ./OpenACC/clover_leaf_kernels.o: ./OpenACC/clover_leaf_kernels.cpp ./OpenACC/clover_leaf_common.h Makefile
-	$(MPICPP) -acc -ta=tesla:cc35  $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
+	$(MPICPP) -acc -ta=tesla:cc60  $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
         -I. OpenACC/clover_leaf_kernels.cpp -c -o OpenACC/clover_leaf_kernels.o
 
 ./OpenACC/%.o: ./OpenACC/%.cpp ./OpenACC/%_c.c ./OpenACC/clover_leaf_common.h Makefile
 	@echo "Compiling kernel" $*
-	$(MPICC) -acc -ta=tesla:cc35 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
+	$(MPICC) -acc -ta=tesla:cc60 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
 	-I. OpenACC/$*_c.c -c -o OpenACC/$*_c.o
-	$(MPICPP) -acc -ta=tesla:cc35  $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
+	$(MPICPP) -acc -ta=tesla:cc60  $(MPIFLAGS) -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(CUDA_INC) \
 	-I. OpenACC/$*.cpp OpenACC/$*_c.o -c -o OpenACC/$*.o
 
 cloverleaf_openacc: $(openacc_obj_list) $(OPS_FILES_GEN) \
                 $(HEADERS)
-	        $(MPICPP) -acc -ta=tesla:cc35 $(MPIFLAGS) $(CUDA_ALIGN_FLAG) $(OPS_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
+	        $(MPICPP) -acc -ta=tesla:cc60 $(MPIFLAGS) $(CUDA_ALIGN_FLAG) $(OPS_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
 		$(OPS_FILES_GEN) -I. $(openacc_obj_list) $(openacc_c_obj_list) -lcudart -lops_mpi_cuda $(HDF5_LIB) -o cloverleaf_openacc
 
 cloverleaf_mpi_openacc: $(openacc_obj_list) $(OPS_FILES_GEN) \
                 $(HEADERS)
-	        $(MPICPP) -acc -ta=tesla:cc35 $(MPIFLAGS) -DOPS_MPI $(OPS_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
+	        $(MPICPP) -acc -ta=tesla:cc60 $(MPIFLAGS) -DOPS_MPI $(OPS_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
 	        $(OPS_FILES_GEN) -I. $(openacc_obj_list) $(openacc_c_obj_list) -lcudart -lops_mpi_cuda $(HDF5_LIB) -o cloverleaf_mpi_openacc
 
 

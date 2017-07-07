@@ -173,3 +173,22 @@ void ops_halo_copy_frombuf(ops_dat dest, char *src, int src_offset, int rx_s,
       buf_strides_y, buf_strides_z, dest->elem_size);
   dest->dirty_hd = 2;
 }
+
+
+__global__ void toucher(char *dat, int size, double fac) {
+  int id = threadIdx.x + blockIdx.x*blockDim.x;
+  if (id < size) {
+    char val = dat[id];
+    if (fac == 0) val = val + 1;
+    if (fac > 1) val = val * fac;
+    else val = val * (char)fac;
+    dat[id] = val;
+  }
+}
+extern "C" {
+void ops_touch(char *dat, int size, double fac) {
+  int nthreads = 1024;
+  int nblocks = (size-1)/nthreads+1;
+  toucher<<<nblocks,nthreads>>>(dat,size,fac);
+}
+}

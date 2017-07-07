@@ -63,6 +63,8 @@ char *OPS_consts_h, *OPS_consts_d, *OPS_reduct_h, *OPS_reduct_d;
 int OPS_gbl_changed = 1;
 char *OPS_gbl_prev = NULL;
 
+cudaStream_t stream = 0;
+int deviceId;
 //
 // CUDA utility functions
 //
@@ -126,7 +128,6 @@ void cutilDeviceInit(int argc, char **argv) {
 
     cutilSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
-    int deviceId = -1;
     cudaGetDevice(&deviceId);
     cudaDeviceProp_t deviceProp;
     cutilSafeCall(cudaGetDeviceProperties(&deviceProp, deviceId));
@@ -143,6 +144,9 @@ void ops_cpHostToDevice(void **data_d, void **data_h, int size) {
     memcpy(*data_d, *data_h, size);
     free(*data_h);
     *data_h = *data_d;
+    int deviceId;
+    cudaGetDevice(&deviceId);
+    cudaMemPrefetchAsync(*data_d,size,deviceId,0);
   } else {
     cutilSafeCall(cudaMalloc(data_d, size));
     cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
@@ -246,7 +250,8 @@ void reallocReductArrays(int reduct_bytes) {
       cutilSafeCall(cudaFree(OPS_reduct_d));
     }
     OPS_reduct_bytes = 4 * reduct_bytes; // 4 is arbitrary, more than needed
-    OPS_reduct_h = (char *)malloc(OPS_reduct_bytes);
+    //OPS_reduct_h = (char *)malloc(OPS_reduct_bytes);
+    cudaMallocHost((void **)&OPS_reduct_h, OPS_reduct_bytes);
     cutilSafeCall(cudaMalloc((void **)&OPS_reduct_d, OPS_reduct_bytes));
   }
 }
@@ -266,22 +271,23 @@ void mvConstArraysToDevice(int consts_bytes) {
     // cutilSafeCall ( cudaMemcpyAsync ( OPS_consts_d, OPS_gbl_prev,
     // consts_bytes,
     //                             cudaMemcpyHostToDevice ) );
-    cutilSafeCall(cudaMemcpy(OPS_consts_d, OPS_consts_h, consts_bytes,
-                             cudaMemcpyHostToDevice));
+    cutilSafeCall(cudaStreamSynchronize(stream));
     memcpy(OPS_gbl_prev, OPS_consts_h, consts_bytes);
+    cutilSafeCall(cudaMemcpyAsync(OPS_consts_d, OPS_gbl_prev, consts_bytes,
+                             cudaMemcpyHostToDevice,stream));
   }
 }
 
 void mvReductArraysToDevice(int reduct_bytes) {
-  cutilSafeCall(cudaMemcpy(OPS_reduct_d, OPS_reduct_h, reduct_bytes,
-                           cudaMemcpyHostToDevice));
-  cutilSafeCall(cudaDeviceSynchronize());
+  cutilSafeCall(cudaMemcpyAsync(OPS_reduct_d, OPS_reduct_h, reduct_bytes,
+                           cudaMemcpyHostToDevice,stream));
+  cutilSafeCall(cudaStreamSynchronize(stream));
 }
 
 void mvReductArraysToHost(int reduct_bytes) {
-  cutilSafeCall(cudaMemcpy(OPS_reduct_h, OPS_reduct_d, reduct_bytes,
-                           cudaMemcpyDeviceToHost));
-  cutilSafeCall(cudaDeviceSynchronize());
+  cutilSafeCall(cudaMemcpyAsync(OPS_reduct_h, OPS_reduct_d, reduct_bytes,
+                           cudaMemcpyDeviceToHost,stream));
+  cutilSafeCall(cudaStreamSynchronize(stream));
 }
 
 void ops_cuda_exit() {
@@ -292,6 +298,38 @@ void ops_cuda_exit() {
     cutilSafeCall(cudaFree((item->dat)->data_d));
     if (ops_managed) (item->dat)->data = NULL;
   }
-
+  if (OPS_consts_bytes>0) {
+    cutilSafeCall(cudaFreeHost(OPS_gbl_prev));
+    cutilSafeCall(cudaFree(OPS_consts_d));
+    free(OPS_consts_h);
+  }
+  if (OPS_reduct_bytes>0) {
+    cutilSafeCall(cudaFreeHost(OPS_reduct_h));
+    cutilSafeCall(cudaFree(OPS_reduct_d));
+  }
 //  cudaDeviceReset();
+}
+void ops_touch(char *, int, double);
+cudaStream_t prefstream = 0;
+void ops_prefetch(ops_dat dat, int *prev_range, int *range, int tile, int num_tiles) {
+  if (!ops_managed) return;
+  if (prefstream == 0) cudaStreamCreateWithFlags(&prefstream,cudaStreamNonBlocking);
+  int offset = 0;
+  if (tile != 0) offset += dat->base_offset + dat->elem_size * (range[0]*(1-(dat->size[0]==1)) + (range[2])*dat->size[0]*(1-(dat->size[1]==1)) + range[4]*dat->size[0]*dat->size[1]*(1-(dat->size[2]==1)));
+  int size = dat->base_offset + dat->elem_size * (range[1]*(1-(dat->size[0]==1)) + range[3]*dat->size[0]*(1-(dat->size[1]==1)) + range[5]*dat->size[0]*dat->size[1]*(1-(dat->size[2]==1)));
+  size -= offset;
+
+  if (num_tiles > 2) {
+    int prev_offset = 0;
+    if (tile != 2) prev_offset += dat->base_offset + dat->elem_size * (prev_range[0]*(1-(dat->size[0]==1)) + (prev_range[2])*dat->size[0]*(1-(dat->size[1]==1)) + prev_range[4]*dat->size[0]*dat->size[1]*(1-(dat->size[2]==1)));
+    int prev_size = dat->base_offset + dat->elem_size * (prev_range[1]*(1-(dat->size[0]==1)) + prev_range[3]*dat->size[0]*(1-(dat->size[1]==1)) + prev_range[5]*dat->size[0]*dat->size[1]*(1-(dat->size[2]==1)));
+    prev_size -= prev_offset;
+    cudaMemPrefetchAsync(dat->data+prev_offset,prev_size,cudaCpuDeviceId,prefstream);
+  }
+
+  if (offset+size > dat->mem) printf("Error, %s too large prefetch size %d-%d, %d-%d\n", dat->name, range[0],range[1],range[2],range[3]);
+  if (OPS_diags>3) printf("Prefetching %s off %d size %d %d-%d, %d-%d, unloading %d-%d, %d-%d\n", dat->name, offset, size, range[0],range[1],range[2],range[3], prev_range[0], prev_range[1], prev_range[2], prev_range[3]);
+  cudaMemPrefetchAsync(dat->data+offset,size,deviceId,prefstream);
+  //ops_touch(dat->data+offset,size,1.0);
+  //cutilSafeCall(cudaStreamSynchronize(prefstream));
 }

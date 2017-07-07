@@ -133,7 +133,7 @@ ifeq ($(NV_ARCH),Fermi)
 	CODE_GEN_CUDA=-gencode arch=compute_20,code=sm_21
 else
 ifeq ($(NV_ARCH),Kepler)
-	CODE_GEN_CUDA=-gencode arch=compute_35,code=sm_35
+	CODE_GEN_CUDA=-gencode arch=compute_60,code=sm_60
 endif
 endif
 
@@ -239,22 +239,22 @@ openacc_obj_list = $(shell find OpenACC/ -name "*.cpp" | sed s/\\.cpp/\\.o/g | t
 openacc_c_obj_list = $(shell find OpenACC/ -name "*_c.c" | sed s/\\.c/\\.o/g | tr "\n" " ")
 
 ./OpenACC/tea_leaf_kernels.o: ./OpenACC/tea_leaf_kernels.cpp ./OpenACC/tea_leaf_common.h Makefile
-		$(MPICPP) -acc -ta=tesla:cc35 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
+		$(MPICPP) -acc -ta=tesla:cc60 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
 		-I. OpenACC/tea_leaf_kernels.cpp -c -o OpenACC/tea_leaf_kernels.o
 
 ./OpenACC/%.o: ./OpenACC/%.cpp ./OpenACC/%_c.c ./OpenACC/tea_leaf_common.h Makefile
 		@echo "Compiling kernel" $*
-		$(MPICC) -acc -ta=tesla:cc35 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_GPU -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
+		$(MPICC) -acc -ta=tesla:cc60 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_GPU -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
 		-I. OpenACC/$*_c.c -c -o OpenACC/$*_c.o
-		$(MPICPP) -acc -ta=tesla:cc35 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_GPU -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
+		$(MPICPP) -acc -ta=tesla:cc60 -ta=tesla:maxregcount:64 $(MPIFLAGS) -DOPS_GPU -DOPS_MPI $(CUDA_ALIGN_FLAG) $(OPS_INC) $(HDF5_INC) $(CUDA_INC) \
 		-I. OpenACC/$*.cpp -c -o OpenACC/$*.o
 
 tealeaf_openacc: $(openacc_obj_list) $(PLAIN_FILES) $(OPS_FILES_GEN) Makefile $(OPS_INSTALL_PATH)/lib/libops_cuda.a
-	        $(MPICPP) -acc -ta=tesla:cc35 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(OPS_INC) $(HDF5_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
+	        $(MPICPP) -acc -ta=tesla:cc60 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(OPS_INC) $(HDF5_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) \
 		$(PLAIN_FILES) $(OPS_FILES_GEN) -I. $(openacc_obj_list) $(openacc_c_obj_list) -lcudart -lops_mpi_cuda $(HDF5_LIB) -o tealeaf_openacc
 
 tealeaf_mpi_openacc: $(openacc_obj_list) $(PLAIN_FILES) $(OPS_FILES_GEN) Makefile $(OPS_INSTALL_PATH)/lib/libops_mpi_cuda.a
-	        $(MPICPP) -acc -ta=tesla:cc35 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(OPS_INC) $(HDF5_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) -DOPS_MPI \
+	        $(MPICPP) -acc -ta=tesla:cc60 $(MPIFLAGS) -DOPS_MPI -DOPS_GPU $(OPS_INC) $(HDF5_INC) $(OPS_LIB) $(CUDA_INC) $(CUDA_LIB) -DOPS_MPI \
 		$(PLAIN_FILES) $(OPS_FILES_GEN) -I. $(openacc_obj_list) $(openacc_c_obj_list) -lcudart -lops_mpi_cuda $(HDF5_LIB) -o tealeaf_mpi_openacc
 
 tealeaf_opencl: ./OpenCL/tealeaf_opencl_kernels.o $(PLAIN_FILES) $(OPS_FILES_GEN) Makefile $(OPS_INSTALL_PATH)/lib/libops_opencl.a

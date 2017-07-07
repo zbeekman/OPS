@@ -49,7 +49,9 @@ int size1 ){
 // host stub function
 // host stub function
 void ops_par_loop_calc_dt_kernel_min_execute(ops_kernel_descriptor *desc) {
+  #ifdef OPS_MPI
   ops_block block = desc->block;
+  #endif
   int dim = desc->dim;
   int *range = desc->range;
   ops_arg arg0 = desc->args[0];
@@ -107,7 +109,7 @@ void ops_par_loop_calc_dt_kernel_min_execute(ops_kernel_descriptor *desc) {
   int xdim0 = args[0].dat->size[0];
 
   if (xdim0 != xdim0_calc_dt_kernel_min_h) {
-    cudaMemcpyToSymbol( xdim0_calc_dt_kernel_min, &xdim0, sizeof(int) );
+    cudaMemcpyToSymbolAsync( xdim0_calc_dt_kernel_min, &xdim0, sizeof(int),0,cudaMemcpyHostToDevice,stream );
     xdim0_calc_dt_kernel_min_h = xdim0;
   }
 
@@ -175,7 +177,7 @@ void ops_par_loop_calc_dt_kernel_min_execute(ops_kernel_descriptor *desc) {
   nshared = MAX(nshared*nthread,reduct_size*nthread);
 
   //call kernel wrapper function, passing in pointers to data
-  ops_calc_dt_kernel_min<<<grid, tblock, nshared >>> (  (double *)p_a[0], (double *)arg1.data_d,x_size, y_size);
+  ops_calc_dt_kernel_min<<<grid, tblock, nshared, stream >>> (  (double *)p_a[0], (double *)arg1.data_d,x_size, y_size);
 
   mvReductArraysToHost(reduct_bytes);
   for ( int b=0; b<maxblocks; b++ ){
@@ -186,7 +188,7 @@ void ops_par_loop_calc_dt_kernel_min_execute(ops_kernel_descriptor *desc) {
   arg1.data = (char *)arg1h;
 
   if (OPS_diags>1) {
-    cutilSafeCall(cudaDeviceSynchronize());
+    cutilSafeCall(cudaStreamSynchronize(stream));
     ops_timers_core(&c1,&t1);
     OPS_kernels[28].time += t1-t2;
   }
