@@ -52,6 +52,12 @@ inline int omp_get_max_threads() {
 }
 #endif
 
+int mod(int a, int b)
+{
+    int r = a % b;
+    return r < 0 ? r + b : r;
+}
+
 #include <vector>
 using namespace std;
 
@@ -863,15 +869,15 @@ void ops_execute() {
 
   //Execute tiles
   for (int tile = 0; tile < total_tiles; tile++) {
-  cudaDeviceSynchronize();
-//#pragma omp parallel sections
-//{
-//   #pragma omp section
-//{
+//  cudaDeviceSynchronize();
+#pragma omp parallel sections
+{
+   #pragma omp section
+{
     ops_timers_core(&c,&t1);
     //Start prefetch of next tile
     int next_tile = (tile+1)%total_tiles;
-    int prev_tile = (tile-1)%total_tiles;
+    int prev_tile = mod(tile-1,total_tiles);
     ops_dat_entry *item;
     ops_dat_entry *tmp_item;
     for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
@@ -890,9 +896,9 @@ void ops_execute() {
     cudaDeviceSynchronize();
     ops_timers_core(&c,&t2);
     printf("prefetch time %g\n",t2-t1);
-//}
-//#pragma omp section
-//{
+}
+#pragma omp section
+{
     //Do current tile
     for (int i = 0; i < ops_kernel_list.size(); i++) {
 
@@ -919,8 +925,8 @@ void ops_execute() {
                ops_kernel_list[i]->range[4], ops_kernel_list[i]->range[5]);
       ops_kernel_list[i]->function(ops_kernel_list[i]);
     }
-//}
-//}
+}
+}
   }
 
   //Set dirtybits
