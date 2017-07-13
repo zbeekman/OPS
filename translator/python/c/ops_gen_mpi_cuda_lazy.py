@@ -445,32 +445,11 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
     code('int start['+str(NDIM)+'];')
     code('int end['+str(NDIM)+'];')
 
-    code('#ifdef OPS_MPI')
-    code('sub_block_list sb = OPS_sub_block_list[block->index];')
-    code('if (!sb->owned) return;')
-    FOR('n','0',str(NDIM))
-    code('start[n] = sb->decomp_disp[n];end[n] = sb->decomp_disp[n]+sb->decomp_size[n];')
-    IF('start[n] >= range[2*n]')
-    code('start[n] = 0;')
-    ENDIF()
-    ELSE()
-    code('start[n] = range[2*n] - start[n];')
-    ENDIF()
-    code('if (sb->id_m[n]==MPI_PROC_NULL && range[2*n] < 0) start[n] = range[2*n];')
-    IF('end[n] >= range[2*n+1]')
-    code('end[n] = range[2*n+1] - sb->decomp_disp[n];')
-    ENDIF()
-    ELSE()
-    code('end[n] = sb->decomp_size[n];')
-    ENDIF()
-    code('if (sb->id_p[n]==MPI_PROC_NULL && (range[2*n+1] > sb->decomp_disp[n]+sb->decomp_size[n]))')
-    code('  end[n] += (range[2*n+1]-sb->decomp_disp[n]-sb->decomp_size[n]);')
-    ENDFOR()
-    code('#else')
+    code('')
     FOR('n','0',str(NDIM))
     code('start[n] = range[2*n];end[n] = range[2*n+1];')
     ENDFOR()
-    code('#endif')
+    code('')
 
     code('')
     code('int x_size = MAX(0,end[0]-start[0]);')
@@ -634,35 +613,26 @@ def ops_gen_mpi_cuda_lazy(master, date, consts, kernels):
     if GBL_INC == True or GBL_MIN == True or GBL_MAX == True or GBL_WRITE == True:
       code('mvReductArraysToDevice(reduct_bytes);')
 
+    code('')
+    code('char *p_a['+str(nargs)+'];')
+
     for n in range (0, nargs):
       if arg_typ[n] == 'ops_arg_dat':
         code('int dat'+str(n)+' = args['+str(n)+'].dat->elem_size;')
 
-    code('')
-    code('char *p_a['+str(nargs)+'];')
-
-
-
     comm('')
     comm('set up initial pointers')
-    code('int d_m[OPS_MAX_DIM];')
     for n in range (0, nargs):
       if arg_typ[n] == 'ops_arg_dat':
-        code('#ifdef OPS_MPI')
-        code('for (int d = 0; d < dim; d++) d_m[d] = args['+str(n)+'].dat->d_m[d] + OPS_sub_dat_list[args['+str(n)+'].dat->index]->d_im[d];')
-        code('#else')
-        code('for (int d = 0; d < dim; d++) d_m[d] = args['+str(n)+'].dat->d_m[d];')
-        code('#endif')
-        code('int base'+str(n)+' = dat'+str(n)+' * 1 *')
-        code('(start[0] * args['+str(n)+'].stencil->stride[0] - args['+str(n)+'].dat->base[0] - d_m[0]);')
+        code('int base'+str(n)+' = args['+str(n)+'].dat->base_offset;')
+        code('base'+str(n)+' += dat'+str(n)+' * (start[0] * args['+str(n)+'].stencil->stride[0]);')
         for d in range (1, NDIM):
-          line = 'base'+str(n)+' = base'+str(n)+'+ dat'+str(n)+' *\n'
+          line = 'base'+str(n)+' += dat'+str(n)+' *\n'
           for d2 in range (0,d):
             line = line + config.depth*' '+'  args['+str(n)+'].dat->size['+str(d2)+'] *\n'
           code(line[:-1])
-          code('  (start['+str(d)+'] * args['+str(n)+'].stencil->stride['+str(d)+'] - args['+str(n)+'].dat->base['+str(d)+'] - d_m['+str(d)+']);')
-        #code('printf("base'+str(n)+' = %d, d_m[0] = %d\\n",base'+str(n)+'/dat'+str(n)+',d_m[0]);')
-        code('p_a['+str(n)+'] = (char *)args['+str(n)+'].data_d + base'+str(n)+';')
+          code('  (start['+str(d)+'] * args['+str(n)+'].stencil->stride['+str(d)+']);')
+        code('p_a['+str(n)+'] = (char *)args['+str(n)+'].dat->data_d + base'+str(n)+';')
         code('')
 
     #halo exchange

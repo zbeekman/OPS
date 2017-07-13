@@ -51,6 +51,9 @@
 #include <ops_cuda_rt_support.h>
 #include <ops_lib_core.h>
 
+#include <vector>
+#include <limits.h>
+
 /*__global__ void copy_kernel(char *dest, char *src, int size ) {
   int tid = blockIdx.x;
   memcpy(&dest[tid],&src[tid],size);
@@ -192,3 +195,122 @@ void ops_touch(char *dat, int size, double fac) {
   toucher<<<nblocks,nthreads>>>(dat,size,fac);
 }
 }
+
+struct datasets {
+  long bytes;
+  ops_dat dat;
+  int size[OPS_MAX_DIM];
+  int base_offset;
+};
+
+std::vector<datasets> dats(0);
+
+cudaStream_t stream_copy_up = 0;
+cudaStream_t stream_copy_down = 0;
+cudaStream_t stream_compute = 0;
+
+void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges) {
+  //Wait for previous downloads to CPU finish
+  cutilSafeCall(cudaStreamSynchronize(stream_copy_down));
+
+  if (tile == 0) {
+    //First time ever - initialise
+    if (dats.size()==0) {
+      dats.resize(dependency_ranges.size());
+      for (int i = 0; i < dats.size(); i++) {
+        dats[i].bytes = 0;
+        dats[i].dat = NULL;
+      }
+      ops_dat_entry *item, *tmp_item;
+      for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+        tmp_item = TAILQ_NEXT(item, entries);
+        dats[item->dat->index].dat = item->dat;
+        dats[item->dat->index].base_offset = item->dat->base_offset;
+        memcpy(dats[item->dat->index].size, item->dat->size, sizeof(int)*OPS_MAX_DIM);
+      }
+    }
+
+    //determine biggest dependency range for each dataset to allocate scratch memory on GPU
+    ops_dat_entry *item, *tmp_item;
+    for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+      tmp_item = TAILQ_NEXT(item, entries);
+      int idx = item->dat->index;
+      int maxsize[OPS_MAX_DIM]; for (int i = 0; i < OPS_MAX_DIM; i++) maxsize[i] = -INT_MAX;
+      for (int t = 0; t < total_tiles; t++) {
+        for (int d = 0; d < item->dat->block->dims; d++) {
+          maxsize[d] = MAX(maxsize[d],dependency_ranges[idx][t * 2 * OPS_MAX_DIM + 2 * d + 1]
+                                    - dependency_ranges[idx][t * 2 * OPS_MAX_DIM + 2 * d + 0]);
+        }
+      }
+
+      //Allocate it a little larger
+      if (maxsize[item->dat->block->dims-1] != 0 && dats[idx].bytes == 0) maxsize[item->dat->block->dims-1] += 13;
+
+      //TODO: assure only last dim is tiled
+      for (int d = 0; d < item->dat->block->dims - 1; d++) maxsize[d] = item->dat->size[d];
+
+      // total required memory
+      long cum_size = item->dat->elem_size; 
+      for (int d = 0; d < item->dat->block->dims; d++) cum_size *= (maxsize[d]);
+      if (cum_size > dats[idx].bytes) {
+        //printf("Reallocating memory for %s: %ld->%ld\n",item->dat->name, dats[idx].bytes,cum_size);
+        cutilSafeCall(cudaFree(item->dat->data_d));
+        cutilSafeCall(cudaMalloc(&item->dat->data_d, cum_size));
+        dats[idx].bytes = cum_size;
+      }
+    }
+  }
+  
+  //Copy required data to GPU
+  //TODO: assert that only last dim is tiled
+  //TODO: SoA
+  ops_dat_entry *item, *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    ops_dat dat = item->dat;
+
+    long base_ptr = dat->base_offset;
+    long end_ptr = dat->base_offset + dat->elem_size; //we calculate the last actually accessed element: -1 to dependency ranges, and +1 here
+    long prod = dat->elem_size;
+    for (int d = 0; d < dat->block->dims; d++) {
+      //printf("%d %d-%d\n",d,dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 0],dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 1]);
+      base_ptr += dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 0] * prod * (dat->size[d]!=1);
+      end_ptr  += (dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 1]-1) * prod * (dat->size[d]!=1);
+      prod *= dat->size[d];
+    }
+    if (end_ptr < base_ptr) end_ptr = base_ptr; //zero ranges
+    
+    //alter base_offset so that it is offset by the dependency range
+    int lastdim_size = dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1]
+                     - dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0];
+    dat->size[dat->block->dims-1] = lastdim_size;
+    //printf("Copying %s from %p+%ld to %p, size %ld. old base: %d new base %ld\n", dat->name, dat->data, base_ptr, dat->data_d, end_ptr-base_ptr, dats[dat->index].base_offset, dats[dat->index].base_offset-base_ptr);
+    dat->base_offset = dats[dat->index].base_offset -  base_ptr; 
+    cutilSafeCall(cudaMemcpyAsync(dat->data_d, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
+  }
+}
+void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges) {
+  //Wait for compute to finish before downloading results
+  cutilSafeCall(cudaStreamSynchronize(stream_compute));
+  //TODO: do not copy back read-only data
+  ops_dat_entry *item, *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    ops_dat dat = item->dat;
+    //Determine data to be copied off to the CPU
+    long base_ptr = dats[dat->index].base_offset;
+    long end_ptr = dats[dat->index].base_offset + dat->elem_size; //we calculate the last actually accessed element: -1 to dependency ranges, and +1 here
+    long prod = dat->elem_size;
+    for (int d = 0; d < dat->block->dims; d++) {
+      base_ptr += dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 0] * prod * (dat->size[d]!=1);
+      end_ptr  += (dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 1]-1) * prod * (dat->size[d]!=1);
+      prod *= dat->size[d];
+    }
+    if (end_ptr < base_ptr) end_ptr = base_ptr; //zero ranges
+    cutilSafeCall(cudaMemcpyAsync(dat->data + base_ptr, dat->data_d, end_ptr - base_ptr, cudaMemcpyDeviceToHost, stream_copy_down));
+    //printf("Copying back %s from %p+%ld to %p, size %ld. old base: %d new base %ld\n", dat->name, dat->data, base_ptr, dat->data_d, end_ptr-base_ptr, dats[dat->index].base_offset, dats[dat->index].base_offset-base_ptr);
+    dat->size[dat->block->dims-1] = dats[dat->index].size[dat->block->dims-1];
+    dat->base_offset = dats[dat->index].base_offset;
+  }
+}
+

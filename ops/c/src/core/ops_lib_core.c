@@ -98,6 +98,15 @@ int compare_blocks(ops_block block1, ops_block block2) {
     return 0;
 }
 
+ops_dat dat_for_index(int index) {
+  ops_dat_entry *item;
+  ops_dat_entry *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    if (item->dat->index == index) return item->dat;
+  }
+}
+
 ops_dat search_dat(ops_block block, int elem_size, int *dat_size, int *offset,
                    char const *type, char const *name) {
   ops_dat_entry *item;

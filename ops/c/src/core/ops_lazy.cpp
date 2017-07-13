@@ -69,6 +69,9 @@ extern int ops_cache_size;
 
 double ops_tiled_halo_exchange_time = 0.0;
 extern "C" void cudaDeviceSynchronize();
+void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges);
+void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges);
+extern "C" ops_dat dat_for_index(int index);
 /////////////////////////////////////////////////////////////////////////
 // Data structures
 /////////////////////////////////////////////////////////////////////////
@@ -783,10 +786,16 @@ int ops_construct_tile_plan() {
       continue;
     }
     for (int d = 0; d < total_tiles * OPS_MAX_DIM; d++) {
-      dependency_ranges[i][2 * d + 0] = MIN(data_read_deps[i][2 * d + 0],data_write_deps[i][2 * d + 0]) - biggest_range[2*(d%OPS_MAX_DIM)];
+      dependency_ranges[i][2 * d + 0] = MIN(data_read_deps[i][2 * d + 0],data_write_deps[i][2 * d + 0]);//TODO: MPI - biggest_range[2*(d%OPS_MAX_DIM)];
+      dependency_ranges[i][2 * d + 1] = MAX(data_read_deps[i][2 * d + 1],data_write_deps[i][2 * d + 1]);// - biggest_range[2*(d%OPS_MAX_DIM)];
       if (dependency_ranges[i][2 * d + 0] > INT_MAX/2) dependency_ranges[i][2 * d + 0] = 0;
-      dependency_ranges[i][2 * d + 1] = MAX(data_read_deps[i][2 * d + 1],data_write_deps[i][2 * d + 1]) - biggest_range[2*(d%OPS_MAX_DIM)];
       if (dependency_ranges[i][2 * d + 1] < -INT_MAX/2) dependency_ranges[i][2 * d + 1] = 0;
+      ops_dat dat = dat_for_index(i);
+      if (dat->size[d%OPS_MAX_DIM] == 1 && (dependency_ranges[i][2 * d + 1]-dependency_ranges[i][2 * d + 0] > 0)) {
+        dependency_ranges[i][2*d+0] = 0;
+        dependency_ranges[i][2*d+1] = 1;
+      }
+      //printf("%s %d: %d-%d\n",dat_for_index(i)->name, d%OPS_MAX_DIM,dependency_ranges[i][2 * d + 0], dependency_ranges[i][2 * d + 1]);
       if (dependency_ranges[i][2 * d + 1]-dependency_ranges[i][2 * d + 0] < 0 || 
           (tile_sizes[d%OPS_MAX_DIM]>0 && dependency_ranges[i][2 * d + 1]-dependency_ranges[i][2 * d + 0] > 2*tile_sizes[d%OPS_MAX_DIM])) 
           printf("Error bad dependency range: %d-%d\n",dependency_ranges[i][2 * d + 1],dependency_ranges[i][2 * d + 0]);
@@ -850,55 +859,10 @@ void ops_execute() {
   if (OPS_diags>3)
     ops_printf("Executing tiling plan for %d loops\n", ops_kernel_list.size());
 
-    ops_timers_core(&c,&t1);
-    //Start prefetch of next tile
-    int next_tile = 0;
-    int prev_tile = 1%total_tiles;
-    ops_dat_entry *item;
-    ops_dat_entry *tmp_item;
-    for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
-      tmp_item = TAILQ_NEXT(item, entries);
-      int idx = item->dat->index;
-      ops_prefetch(item->dat,
-          NULL,
-          &dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM], next_tile, 1);
-    }
-    cudaDeviceSynchronize();
-    ops_timers_core(&c,&t2);
-    printf("Tile 0 prefetch time %g\n",t2-t1);
-
   //Execute tiles
   for (int tile = 0; tile < total_tiles; tile++) {
-//  cudaDeviceSynchronize();
-#pragma omp parallel sections
-{
-   #pragma omp section
-{
-    ops_timers_core(&c,&t1);
-    //Start prefetch of next tile
-    int next_tile = (tile+1)%total_tiles;
-    int prev_tile = mod(tile-1,total_tiles);
-    ops_dat_entry *item;
-    ops_dat_entry *tmp_item;
-    for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
-      tmp_item = TAILQ_NEXT(item, entries);
-      int idx = item->dat->index;
-      int unload[2*OPS_MAX_DIM];
-      for (int i = 0; i < OPS_MAX_DIM; i++) {
-        unload[2*i+0] = dependency_ranges[idx][prev_tile * 2 * OPS_MAX_DIM + 2*i + 0];
-        if (tile == 0) unload[2*i+1] = dependency_ranges[idx][prev_tile * 2 * OPS_MAX_DIM + 2*i + 1];
-        else unload[2*i+1] = dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2*i + 0];
-      }
-      ops_prefetch(item->dat,
-          &unload[0],
-          &dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM], next_tile, total_tiles);
-    }
-    cudaDeviceSynchronize();
-    ops_timers_core(&c,&t2);
-    printf("prefetch time %g\n",t2-t1);
-}
-#pragma omp section
-{
+    ops_prepare_tile(tile, total_tiles, tiled_ranges, dependency_ranges);
+    //TODO: update arg.data_d
     //Do current tile
     for (int i = 0; i < ops_kernel_list.size(); i++) {
 
@@ -925,8 +889,7 @@ void ops_execute() {
                ops_kernel_list[i]->range[4], ops_kernel_list[i]->range[5]);
       ops_kernel_list[i]->function(ops_kernel_list[i]);
     }
-}
-}
+    ops_finish_tile(tile, total_tiles, tiled_ranges, dependency_ranges);
   }
 
   //Set dirtybits

@@ -62,6 +62,7 @@ char *OPS_consts_h, *OPS_consts_d, *OPS_reduct_h, *OPS_reduct_d;
 
 int OPS_gbl_changed = 1;
 char *OPS_gbl_prev = NULL;
+extern int ops_enable_tiling;
 
 cudaStream_t stream = 0;
 int deviceId;
@@ -148,14 +149,17 @@ void ops_cpHostToDevice(void **data_d, void **data_h, int size) {
     cudaGetDevice(&deviceId);
     cudaMemPrefetchAsync(*data_d,size,deviceId,0);
   } else {
-    cutilSafeCall(cudaMalloc(data_d, size));
-    cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
-    cutilSafeCall(cudaDeviceSynchronize());
+    if (!ops_enable_tiling) {
+      cutilSafeCall(cudaMalloc(data_d, size));
+      cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
+      cutilSafeCall(cudaDeviceSynchronize());
+    }
   }
 }
 
 void ops_download_dat(ops_dat dat) {
   if (ops_managed) return; 
+  if (ops_enable_tiling) return;
   // if (!OPS_hybrid_gpu) return;
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
@@ -167,6 +171,7 @@ void ops_download_dat(ops_dat dat) {
 
 void ops_upload_dat(ops_dat dat) {
   if (ops_managed) return;
+  if (ops_enable_tiling) return;
   // if (!OPS_hybrid_gpu) return;
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
@@ -214,7 +219,7 @@ void ops_cuda_get_data(ops_dat dat) {
   else
     return;
   if (ops_managed) return;
-
+  if (ops_enable_tiling) return;
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
     bytes = bytes * dat->size[i];
