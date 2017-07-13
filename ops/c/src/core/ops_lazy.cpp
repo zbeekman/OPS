@@ -52,11 +52,6 @@ inline int omp_get_max_threads() {
 }
 #endif
 
-int mod(int a, int b)
-{
-    int r = a % b;
-    return r < 0 ? r + b : r;
-}
 
 #include <vector>
 using namespace std;
