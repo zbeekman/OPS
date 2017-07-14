@@ -153,6 +153,12 @@ void ops_cpHostToDevice(void **data_d, void **data_h, int size) {
       cutilSafeCall(cudaMalloc(data_d, size));
       cutilSafeCall(cudaMemcpy(*data_d, *data_h, size, cudaMemcpyHostToDevice));
       cutilSafeCall(cudaDeviceSynchronize());
+    } else {
+      cutilSafeCall(cudaMallocHost(data_d,size));
+      memcpy(*data_d, *data_h, size);
+      free(*data_h);
+      *data_h = *data_d;
+      *data_d = NULL;
     }
   }
 }
@@ -302,6 +308,10 @@ void ops_cuda_exit() {
   TAILQ_FOREACH(item, &OPS_dat_list, entries) {
     cutilSafeCall(cudaFree((item->dat)->data_d));
     if (ops_managed) (item->dat)->data = NULL;
+    if (ops_enable_tiling) {
+      cutilSafeCall(cudaFreeHost((item->dat)->data));
+      (item->dat)->data = NULL;
+    }
   }
   if (OPS_consts_bytes>0) {
     cutilSafeCall(cudaFreeHost(OPS_gbl_prev));
