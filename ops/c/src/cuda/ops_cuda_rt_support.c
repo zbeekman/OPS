@@ -64,7 +64,7 @@ int OPS_gbl_changed = 1;
 char *OPS_gbl_prev = NULL;
 extern int ops_enable_tiling;
 
-cudaStream_t stream = 0;
+extern cudaStream_t stream;
 int deviceId;
 //
 // CUDA utility functions
