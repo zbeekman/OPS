@@ -352,7 +352,6 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   //TODO: SoA: set dat->size[dat->block->dims-1]
   ops_dat_entry *item, *tmp_item;
   if (tile == 0) { //TODO: v1, will need to check if it was uploaded predictively okay
-    cudaStreamSynchronize(stream_copy_down);
     for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
       tmp_item = TAILQ_NEXT(item, entries);
       ops_dat dat = item->dat;
@@ -361,11 +360,16 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       //Determine data to be copied up to the GPU
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
-      printf("Tile 0 Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", dat->name, dat->data, base_ptr, dat->data_d,delta, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
-      cutilSafeCall(cudaMemcpyAsync(dat->data_d+delta, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-      dats[idx].curr_slot = 0;
-      dats[idx].curr_offset = delta;
-      dats[idx].last_offset = 0;
+      if (end_ptr-base_ptr == 0) continue;
+      dats[idx].curr_slot = mod(dats[idx].curr_slot+1,3);
+      dats[idx].last_offset = dats[idx].curr_offset;
+      if (dats[idx].curr_slot == 0)
+        dats[idx].curr_offset = delta;
+      else
+        dats[idx].curr_offset = dats[idx].last_offset + dats[idx].curr_size + delta; //previous offset+size+delta
+      if (dats[idx].curr_offset + end_ptr-base_ptr > dats[idx].bytes) printf("Error, out of bounds copy for %s: copying tile %d to slot %d: %p+%ld size %ld, but size is %ld\n",dat->name, tile, dats[idx].curr_slot, dat->data_d, dats[idx].curr_offset, end_ptr - base_ptr, dats[idx].bytes);
+      //printf("Tile 0 fetching to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", dats[idx].curr_slot, dat->name, dat->data, base_ptr, dat->data_d,dats[idx].curr_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
+      cutilSafeCall(cudaMemcpyAsync(dat->data_d+dats[idx].curr_offset, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
       dats[idx].curr_size = end_ptr-base_ptr;
       dats[idx].curr_chunk[0] = dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0];
       dats[idx].curr_chunk[1] = dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1];
@@ -387,14 +391,16 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       //Upload next tile
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, mod(tile+1,total_tiles), total_tiles, 1, delta); //Right
+      if (end_ptr-base_ptr == 0) continue;
       if (dats[idx].curr_slot < 2) {
-        printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", tile+1, dats[idx].curr_slot+1, dat->name, dat->data, base_ptr, dat->data_d, dats[idx].curr_offset + dats[idx].curr_size, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
-        cutilSafeCall(cudaMemcpyAsync(dat->data_d + dats[idx].curr_offset + dats[idx].curr_size,
-                dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
         dats[idx].curr_slot++; //Smaller than two, so just increment
         dats[idx].last_offset = dats[idx].curr_offset;
         dats[idx].curr_offset += dats[idx].curr_size; //end of previous
         dats[idx].curr_size = end_ptr-base_ptr;
+        if (dats[idx].curr_offset + end_ptr-base_ptr > dats[idx].bytes) printf("Error, out of bounds copy for %s: copying tile %d to slot %d: %p+%ld size %ld, but size is %ld\n",dat->name, tile+1, dats[idx].curr_slot, dat->data_d, dats[idx].curr_offset, end_ptr - base_ptr, dats[idx].bytes);
+        //printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", tile+1, dats[idx].curr_slot, dat->name, dat->data, base_ptr, dat->data_d, dats[idx].curr_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
+        cutilSafeCall(cudaMemcpyAsync(dat->data_d + dats[idx].curr_offset,
+                dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
         dats[idx].copy_from = 0;
         dats[idx].copy_amount = 0;
       } else { //Going to first slot, need extra offset, and copy of previous tile's overlapping dependency range
@@ -402,7 +408,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
         long base_ptr2, end_ptr2;
         ops_get_offsets_deprange(base_ptr2, end_ptr2, dat, dependency_ranges, mod(tile+1,total_tiles), total_tiles, 2, delta); //Full
         long extra_offset = base_ptr - base_ptr2;
-        printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", tile+1, 0, dat->name, dat->data, base_ptr, dat->data_d, extra_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
+        //printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld\n", tile+1, 0, dat->name, dat->data, base_ptr, dat->data_d, extra_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr);
         cutilSafeCall(cudaMemcpyAsync(dat->data_d + extra_offset,
                 dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
         dats[idx].copy_from = dats[idx].curr_offset + dats[idx].curr_size - extra_offset;
@@ -425,11 +431,13 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
     tmp_item = TAILQ_NEXT(item, entries);
     ops_dat dat = item->dat;
-    if ((tile < total_tiles-1 && dats[dat->index].curr_slot == 1) || (tile == total_tiles-1 && dats[dat->index].curr_slot == 0) || dat->size[dat->block->dims-1] == 1) { //TODO: v1 upload next handling
+    if (tile==0 || (tile < total_tiles-1 && dats[dat->index].curr_slot == 1) || (tile == total_tiles-1 && dats[dat->index].curr_slot == 0) || dat->size[dat->block->dims-1] == 1) { //TODO: v1 upload next handling
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
-      //printf("New base offset for %s: %ld->%ld\n",dat->name, dat->base_offset, dats[dat->index].base_offset -  base_ptr);
-      dat->base_offset = dats[dat->index].base_offset -  base_ptr + delta; //TODO: v1 little extra for first tile for safety
+      dat->base_offset = dats[dat->index].base_offset - base_ptr + 
+            (tile == total_tiles-1 ? dats[dat->index].curr_offset : dats[dat->index].last_offset); //TODO: v1 little extra for first tile for safety
+      //printf("New base offset for %s: %d->%ld=%d-%ld+%ld\n",dat->name, dats[dat->index].base_offset, dat->base_offset, dats[dat->index].base_offset, base_ptr,
+      //    tile == total_tiles-1 ? dats[dat->index].curr_offset : dats[dat->index].last_offset);
     }
   }
 
@@ -460,6 +468,7 @@ void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &
 
     //Copy over the right edge of this tile in the last slot, to the left of the first slot
     if (dats[idx].curr_slot == 0 && dats[idx].copy_amount > 0) {
+      if (dats[idx].copy_from + dats[idx].copy_amount > dats[idx].bytes) printf("Error: right edge to start overreach\n");
       cutilSafeCall(cudaMemcpyAsync(dat->data_d, dat->data_d+dats[idx].copy_from, dats[idx].copy_amount, cudaMemcpyDeviceToDevice, stream_compute));
       dats[idx].copy_from = 0;
       dats[idx].copy_amount = 0;
@@ -475,14 +484,12 @@ void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &
       ops_get_offsets_deprange(base_ptr2, end_ptr2, dat, dependency_ranges, tile, total_tiles, 1, delta); //Right
       base_ptr_gpu -= (base_ptr2-base_ptr);
     }
-    printf("Tile %d copying back %s to %p+%ld from %p+%ld, size %ld\n", tile, dat->name, dat->data, base_ptr, dat->data_d, base_ptr_gpu,end_ptr-base_ptr);
+    //printf("Tile %d copying back %s to %p+%ld from %p+%ld, size %ld\n", tile, dat->name, dat->data, base_ptr, dat->data_d, base_ptr_gpu,end_ptr-base_ptr);
     cutilSafeCall(cudaMemcpyAsync(dat->data + base_ptr, dat->data_d+base_ptr_gpu, end_ptr - base_ptr, cudaMemcpyDeviceToHost, stream_copy_down));
   }
 
   //Wait for previous round of copies to finish
   cudaEventSynchronize(e_copydown);
   cudaEventDestroy(e_copydown);
-  if (((double*)dats[27].dat->data)[202] == 0.0 && tile > 1) {printf("Zero detected for tile %d\n",tile-1);}
-//Problem if there is no sync on stream_copy_up here - i.e. ths unload overlaps with next load
 }
 
