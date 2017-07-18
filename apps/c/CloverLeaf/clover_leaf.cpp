@@ -126,6 +126,8 @@ int jdt, kdt;
 
 void start();
 
+extern int ops_cyclic;
+
 #include "cloverleaf_ops_vars.h"
 #include "profile.cpp"
 
@@ -170,6 +172,8 @@ int main(int argc, char **argv)
   double ct0, ct1, et0, et1;
   ops_timers(&ct0, &et0);
 
+ops_execute();
+ops_cyclic = 1;
   while(1) {
 
     step = step + 1;

@@ -64,8 +64,8 @@ extern int ops_cache_size;
 
 double ops_tiled_halo_exchange_time = 0.0;
 extern "C" void cudaDeviceSynchronize();
-void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges);
-void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges);
+void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datatsets_access_type);
+void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datatsets_access_type);
 extern "C" ops_dat dat_for_index(int index);
 /////////////////////////////////////////////////////////////////////////
 // Data structures
@@ -91,6 +91,7 @@ struct tiling_plan {
   std::vector<std::vector<int> > dependency_ranges; // data dependency footprints
   std::vector<ops_dat> dats_to_exchange;
   std::vector<int> depths_to_exchange;
+  std::vector<int> datasets_access_type;
 };
 
 std::vector<tiling_plan> tiling_plans;
@@ -720,8 +721,12 @@ int ops_construct_tile_plan() {
 
   //Figure out which datasets need halo exchange - based on whether written or read first
   std::vector<int> datasets_accessed(OPS_dat_index, -1);
+  std::vector<int> &datasets_access_type = 
+      tiling_plans[tiling_plans.size() - 1].datasets_access_type;
+  datasets_access_type.resize(OPS_dat_index);
+  for (int i = 0; i < OPS_dat_index; i++) datasets_access_type[i] = -1;
   for (int i = 0; i < ops_kernel_list.size(); i++) {
-    for (int arg = 0; arg < ops_kernel_list[i]->nargs; arg++)
+    for (int arg = 0; arg < ops_kernel_list[i]->nargs; arg++) {
       if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt == 1 && datasets_accessed[ops_kernel_list[i]->args[arg].dat->index] == -1) {
         datasets_accessed[ops_kernel_list[i]->args[arg].dat->index] = (ops_kernel_list[i]->args[arg].acc == OPS_WRITE ? 0 : 1);
         if (ops_kernel_list[i]->args[arg].acc != OPS_WRITE)
@@ -729,6 +734,21 @@ int ops_construct_tile_plan() {
          if (OPS_diags > 5)
               ops_printf("First access to dataset %s is %d (0-write, 1-read)\n",ops_kernel_list[i]->args[arg].dat->name, datasets_accessed[ops_kernel_list[i]->args[arg].dat->index]);
       }
+      if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt == 1) {
+        //-1 never accessed
+        //0 written first
+        //1 read only
+        //2 read first then written too
+        if (datasets_access_type[ops_kernel_list[i]->args[arg].dat->index] == -1) {
+          datasets_access_type[ops_kernel_list[i]->args[arg].dat->index] = ops_kernel_list[i]->args[arg].acc != OPS_WRITE ? 1 : 0;
+          //printf("%s: %s is now %d\n",ops_kernel_list[i]->name,ops_kernel_list[i]->args[arg].dat->name, datasets_access_type[ops_kernel_list[i]->args[arg].dat->index]);
+        }
+        else if (datasets_access_type[ops_kernel_list[i]->args[arg].dat->index] == 1 && ops_kernel_list[i]->args[arg].acc != OPS_READ) {
+          datasets_access_type[ops_kernel_list[i]->args[arg].dat->index] = 2;
+          //printf("%s: %s is now %d\n",ops_kernel_list[i]->name,ops_kernel_list[i]->args[arg].dat->name, datasets_access_type[ops_kernel_list[i]->args[arg].dat->index]);
+        }
+      }
+    }
   }
 
   //Register halo depths needed
@@ -783,6 +803,7 @@ int ops_construct_tile_plan() {
     for (int d = 0; d < total_tiles * OPS_MAX_DIM; d++) {
       dependency_ranges[i][2 * d + 0] = MIN(data_read_deps[i][2 * d + 0],data_write_deps[i][2 * d + 0]);//TODO: MPI - biggest_range[2*(d%OPS_MAX_DIM)];
       dependency_ranges[i][2 * d + 1] = MAX(data_read_deps[i][2 * d + 1],data_write_deps[i][2 * d + 1]);// - biggest_range[2*(d%OPS_MAX_DIM)];
+//      if (d/OPS_MAX_DIM == 0) printf("%s - dim %d tile 0: read: %d-%d write: %d-%d\n",dat_for_index(i)->name,d%OPS_MAX_DIM, data_read_deps[i][2 * d + 0], data_read_deps[i][2 * d + 1], data_write_deps[i][2 * d + 0],data_write_deps[i][2 * d + 1]);
       if (dependency_ranges[i][2 * d + 0] > INT_MAX/2) dependency_ranges[i][2 * d + 0] = 0;
       if (dependency_ranges[i][2 * d + 1] < -INT_MAX/2) dependency_ranges[i][2 * d + 1] = 0;
       ops_dat dat = dat_for_index(i);
@@ -836,6 +857,8 @@ void ops_execute() {
       tiling_plans[match].tiled_ranges;
   std::vector<std::vector<int> > &dependency_ranges =
       tiling_plans[match].dependency_ranges;
+  std::vector<int> &datasets_access_type = 
+      tiling_plans[match].datasets_access_type;
   int total_tiles = tiling_plans[match].ntiles;
 
   //Do halo exchanges
@@ -856,7 +879,7 @@ void ops_execute() {
 
   //Execute tiles
   for (int tile = 0; tile < total_tiles; tile++) {
-    ops_prepare_tile(tile, total_tiles, tiled_ranges, dependency_ranges);
+    ops_prepare_tile(tile, total_tiles, tiled_ranges, dependency_ranges, datasets_access_type);
     //TODO: update arg.data_d
     //Do current tile
     for (int i = 0; i < ops_kernel_list.size(); i++) {
@@ -884,7 +907,7 @@ void ops_execute() {
                ops_kernel_list[i]->range[4], ops_kernel_list[i]->range[5]);
       ops_kernel_list[i]->function(ops_kernel_list[i]);
     }
-    ops_finish_tile(tile, total_tiles, tiled_ranges, dependency_ranges);
+    ops_finish_tile(tile, total_tiles, tiled_ranges, dependency_ranges, datasets_access_type);
   }
 
   //Set dirtybits

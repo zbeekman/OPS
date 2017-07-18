@@ -87,7 +87,7 @@ void start();
 
 #include "cloverleaf_ops_vars.h"
 #include "profile.cpp"
-
+extern int ops_cyclic;
 
 int main(int argc, char **argv)
 {
@@ -117,7 +117,8 @@ int main(int argc, char **argv)
   ops_decl_const2( "dt",1, "double",&dt);
 
   start();
-
+ops_execute();
+ops_cyclic = 1;
   double ct0, ct1, et0, et1;
   ops_timers(&ct0, &et0);
 
@@ -152,7 +153,7 @@ int main(int argc, char **argv)
       complete=TRUE;
       field_summary();
       ops_fprintf(g_out,"\n\n Calculation complete\n");
-  //    ops_print_dat_to_txtfile(density0, "density0.txt");
+      //ops_print_dat_to_txtfile(density0, "density0.txt");
       ops_fprintf(g_out,"\n Clover is finishing\n");
       break;
     }
