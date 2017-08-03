@@ -250,6 +250,17 @@ cloverleaf_mpi_cuda: ./CUDA/cloverleaf_kernels_mpi_cu.o $(OPS_FILES_GEN) \
 				$(NVCC) $(VAR) $(INC) $(NVCC_FLAGS) -DOPS_MPI $(CODE_GEN_CUDA) $(OPS_INC) -I. -DMPICH_IGNORE_CXX_SEEK -I$(MPI_INSTALL_PATH)/include \
 				-c -o ./CUDA/cloverleaf_kernels_mpi_cu.o ./CUDA/clover_leaf_kernels.cu
 
+cloverleaf_cuda_tiled: Makefile ./CUDA_Lazy/cloverleaf_kernels_cu.o $(OPS_FILES_GEN) \
+		$(HEADERS) $(OPS_INSTALL_PATH)/lib/libops_cuda.a
+		$(CPP) $(OMPFLAGS) $(CPPFLAGS) $(CUDA_INC) $(OPS_INC) $(HDF5_INC) $(OPS_LIB) $(CUDA_LIB) $(OPS_FILES_GEN) ./CUDA_Lazy/cloverleaf_kernels_cu.o -lcudart -lops_cuda $(HDF5_LIB) -o cloverleaf_cuda_tiled
+
+./CUDA_Lazy/cloverleaf_kernels_cu.o:	./CUDA_Lazy/clover_leaf_kernels.cu \
+				Makefile
+				$(NVCC) $(VAR) $(INC) $(NVCC_FLAGS) $(CODE_GEN_CUDA) $(OPS_INC) $(HDF5_INC) -I. \
+				-c -o ./CUDA_Lazy/cloverleaf_kernels_cu.o ./CUDA_Lazy/clover_leaf_kernels.cu
+
+
+
 mpiinline_obj_list = $(shell find MPI_inline/ -name "*.cpp" | sed s/\\.cpp/\\.o/g | tr "\n" " ")
 mpiinline_c_obj_list = $(shell find MPI_inline/ -name "*_c.c" | sed s/\\.c/\\.o/g | tr "\n" " ")
 

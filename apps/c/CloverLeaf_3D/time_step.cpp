@@ -63,7 +63,7 @@ void timestep()
   fields[FIELD_ENERGY1]   = 0;
   fields[FIELD_SOUNDSPEED] = 0;
   fields[FIELD_PRESSURE]  = 1;
-  fields[FIELD_VISCOSITY] = 0;
+  fields[FIELD_VISCOSITY] = 1;
   fields[FIELD_XVEL0]     = 1;
   fields[FIELD_YVEL0]     = 1;
   fields[FIELD_ZVEL0]     = 0;
