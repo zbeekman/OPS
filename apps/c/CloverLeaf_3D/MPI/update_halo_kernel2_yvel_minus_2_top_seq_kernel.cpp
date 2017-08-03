@@ -5,9 +5,9 @@
 // user function
 inline void update_halo_kernel2_yvel_minus_2_top(double *yvel0, double *yvel1,
                                                  const int *fields) {
-  if (fields[FIELD_YVEL0] == 1)
+  if ((*fields) & FIELD_YVEL0)
     yvel0[OPS_ACC0(0, 0, 0)] = -yvel0[OPS_ACC0(0, -2, 0)];
-  if (fields[FIELD_YVEL1] == 1)
+  if ((*fields) & FIELD_YVEL1)
     yvel1[OPS_ACC1(0, 0, 0)] = -yvel1[OPS_ACC1(0, -2, 0)];
 }
 

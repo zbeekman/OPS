@@ -170,8 +170,6 @@ void ops_par_loop_update_halo_kernel1_ba1(char const *name, ops_block block,
   int dat5 = args[5].dat->elem_size;
   int dat6 = args[6].dat->elem_size;
 
-  int *arg7h = (int *)arg7.data;
-
   // set up initial pointers
   int d_m[OPS_MAX_DIM];
 #ifdef OPS_MPI
@@ -307,7 +305,7 @@ void ops_par_loop_update_halo_kernel1_ba1(char const *name, ops_block block,
                d_m[2]);
   double *p_a6 = (double *)((char *)args[6].data + base6);
 
-  int *p_a7 = arg7h;
+  int *p_a7 = (int *)args[7].data;
 
   ops_H_D_exchanges_host(args, 8);
   ops_halo_exchanges(args, 8, range);

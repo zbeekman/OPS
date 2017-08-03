@@ -10,9 +10,9 @@
 inline void update_halo_kernel4_plus_2_a(double *vol_flux_y,
                                          double *mass_flux_y,
                                          const int *fields) {
-  if (fields[FIELD_VOL_FLUX_Y] == 1)
+  if ((*fields) & FIELD_VOL_FLUX_Y)
     vol_flux_y[OPS_ACC0(0, 0, 0)] = vol_flux_y[OPS_ACC0(2, 0, 0)];
-  if (fields[FIELD_MASS_FLUX_Y] == 1)
+  if ((*fields) & FIELD_MASS_FLUX_Y)
     mass_flux_y[OPS_ACC1(0, 0, 0)] = mass_flux_y[OPS_ACC1(2, 0, 0)];
 }
 

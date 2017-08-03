@@ -57,19 +57,19 @@
 inline void
 update_halo_kernel5_minus_2_front(__global double *restrict vol_flux_z,
                                   __global double *restrict mass_flux_z,
-                                  const __global int *restrict fields)
+                                  const int *restrict fields)
 
 {
-  if (fields[FIELD_VOL_FLUX_Z] == 1)
+  if ((*fields) & FIELD_VOL_FLUX_Z)
     vol_flux_z[OPS_ACC0(0, 0, 0)] = -vol_flux_z[OPS_ACC0(0, 0, -2)];
-  if (fields[FIELD_MASS_FLUX_Z] == 1)
+  if ((*fields) & FIELD_MASS_FLUX_Z)
     mass_flux_z[OPS_ACC1(0, 0, 0)] = -mass_flux_z[OPS_ACC1(0, 0, -2)];
 }
 
 __kernel void ops_update_halo_kernel5_minus_2_front(
     __global double *restrict arg0, __global double *restrict arg1,
-    __global const int *restrict arg2, const int base0, const int base1,
-    const int size0, const int size1, const int size2) {
+    const int arg2, const int base0, const int base1, const int size0,
+    const int size1, const int size2) {
 
   int idx_y = get_global_id(1);
   int idx_z = get_global_id(2);
@@ -85,6 +85,6 @@ __kernel void ops_update_halo_kernel5_minus_2_front(
               idx_y * 1 * 1 * xdim1_update_halo_kernel5_minus_2_front +
               idx_z * 1 * 1 * xdim1_update_halo_kernel5_minus_2_front *
                   ydim1_update_halo_kernel5_minus_2_front],
-        arg2);
+        &arg2);
   }
 }

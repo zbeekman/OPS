@@ -5,9 +5,9 @@
 // user function
 inline void update_halo_kernel2_xvel_minus_2_right(double *xvel0, double *xvel1,
                                                    const int *fields) {
-  if (fields[FIELD_XVEL0] == 1)
+  if ((*fields) & FIELD_XVEL0)
     xvel0[OPS_ACC0(0, 0, 0)] = -xvel0[OPS_ACC0(-2, 0, 0)];
-  if (fields[FIELD_XVEL1] == 1)
+  if ((*fields) & FIELD_XVEL1)
     xvel1[OPS_ACC1(0, 0, 0)] = -xvel1[OPS_ACC1(-2, 0, 0)];
 }
 

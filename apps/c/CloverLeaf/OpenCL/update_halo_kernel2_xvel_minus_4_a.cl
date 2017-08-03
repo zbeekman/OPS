@@ -48,22 +48,21 @@
 #define OPS_ACC1(x, y) (x + xdim1_update_halo_kernel2_xvel_minus_4_a * (y))
 
 // user function
-inline void
-update_halo_kernel2_xvel_minus_4_a(__global double *restrict xvel0,
-                                   __global double *restrict xvel1,
-                                   const __global int *restrict fields)
+inline void update_halo_kernel2_xvel_minus_4_a(__global double *restrict xvel0,
+                                               __global double *restrict xvel1,
+                                               const int *restrict fields)
 
 {
-  if (fields[FIELD_XVEL0] == 1)
+  if ((*fields) & FIELD_XVEL0)
     xvel0[OPS_ACC0(0, 0)] = -xvel0[OPS_ACC0(4, 0)];
-  if (fields[FIELD_XVEL1] == 1)
+  if ((*fields) & FIELD_XVEL1)
     xvel1[OPS_ACC1(0, 0)] = -xvel1[OPS_ACC1(4, 0)];
 }
 
 __kernel void ops_update_halo_kernel2_xvel_minus_4_a(
     __global double *restrict arg0, __global double *restrict arg1,
-    __global const int *restrict arg2, const int base0, const int base1,
-    const int size0, const int size1) {
+    const int arg2, const int base0, const int base1, const int size0,
+    const int size1) {
 
   int idx_y = get_global_id(1);
   int idx_x = get_global_id(0);
@@ -74,6 +73,6 @@ __kernel void ops_update_halo_kernel2_xvel_minus_4_a(
               idx_y * 1 * 1 * xdim0_update_halo_kernel2_xvel_minus_4_a],
         &arg1[base1 + idx_x * 1 * 1 +
               idx_y * 1 * 1 * xdim1_update_halo_kernel2_xvel_minus_4_a],
-        arg2);
+        &arg2);
   }
 }

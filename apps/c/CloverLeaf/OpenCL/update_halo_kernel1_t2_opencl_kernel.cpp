@@ -201,22 +201,6 @@ void ops_par_loop_update_halo_kernel1_t2(char const *name, ops_block block,
       ((y_size - 1) / OPS_block_size_y + 1) * OPS_block_size_y, 1};
   size_t localWorkSize[3] = {OPS_block_size_x, OPS_block_size_y, 1};
 
-  int *arg7h = (int *)arg7.data;
-
-  int consts_bytes = 0;
-
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-
-  reallocConstArrays(consts_bytes);
-
-  consts_bytes = 0;
-  arg7.data = OPS_consts_h + consts_bytes;
-  arg7.data_d = OPS_consts_d + consts_bytes;
-  for (int d = 0; d < NUM_FIELDS; d++)
-    ((int *)arg7.data)[d] = arg7h[d];
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-  mvConstArraysToDevice(consts_bytes);
-
   // set up initial pointers
   int d_m[OPS_MAX_DIM];
 #ifdef OPS_MPI
@@ -340,8 +324,8 @@ void ops_par_loop_update_halo_kernel1_t2(char const *name, ops_block block,
                             (void *)&arg5.data_d));
   clSafeCall(clSetKernelArg(OPS_opencl_core.kernel[45], 6, sizeof(cl_mem),
                             (void *)&arg6.data_d));
-  clSafeCall(clSetKernelArg(OPS_opencl_core.kernel[45], 7, sizeof(cl_mem),
-                            (void *)&arg7.data_d));
+  clSafeCall(clSetKernelArg(OPS_opencl_core.kernel[45], 7, sizeof(cl_int),
+                            (void *)arg7.data));
   clSafeCall(clSetKernelArg(OPS_opencl_core.kernel[45], 8, sizeof(cl_int),
                             (void *)&base0));
   clSafeCall(clSetKernelArg(OPS_opencl_core.kernel[45], 9, sizeof(cl_int),

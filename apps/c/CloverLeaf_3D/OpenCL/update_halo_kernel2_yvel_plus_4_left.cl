@@ -57,19 +57,19 @@
 inline void
 update_halo_kernel2_yvel_plus_4_left(__global double *restrict yvel0,
                                      __global double *restrict yvel1,
-                                     const __global int *restrict fields)
+                                     const int *restrict fields)
 
 {
-  if (fields[FIELD_YVEL0] == 1)
+  if ((*fields) & FIELD_YVEL0)
     yvel0[OPS_ACC0(0, 0, 0)] = yvel0[OPS_ACC0(4, 0, 0)];
-  if (fields[FIELD_YVEL1] == 1)
+  if ((*fields) & FIELD_YVEL1)
     yvel1[OPS_ACC1(0, 0, 0)] = yvel1[OPS_ACC1(4, 0, 0)];
 }
 
 __kernel void ops_update_halo_kernel2_yvel_plus_4_left(
     __global double *restrict arg0, __global double *restrict arg1,
-    __global const int *restrict arg2, const int base0, const int base1,
-    const int size0, const int size1, const int size2) {
+    const int arg2, const int base0, const int base1, const int size0,
+    const int size1, const int size2) {
 
   int idx_y = get_global_id(1);
   int idx_z = get_global_id(2);
@@ -85,6 +85,6 @@ __kernel void ops_update_halo_kernel2_yvel_plus_4_left(
               idx_y * 1 * 1 * xdim1_update_halo_kernel2_yvel_plus_4_left +
               idx_z * 1 * 1 * xdim1_update_halo_kernel2_yvel_plus_4_left *
                   ydim1_update_halo_kernel2_yvel_plus_4_left],
-        arg2);
+        &arg2);
   }
 }

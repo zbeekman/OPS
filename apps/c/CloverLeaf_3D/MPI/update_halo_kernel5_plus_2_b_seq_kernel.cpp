@@ -6,9 +6,9 @@
 inline void update_halo_kernel5_plus_2_b(double *vol_flux_z,
                                          double *mass_flux_z,
                                          const int *fields) {
-  if (fields[FIELD_VOL_FLUX_Z] == 1)
+  if ((*fields) & FIELD_VOL_FLUX_Z)
     vol_flux_z[OPS_ACC0(0, 0, 0)] = vol_flux_z[OPS_ACC0(0, -2, 0)];
-  if (fields[FIELD_MASS_FLUX_Z] == 1)
+  if ((*fields) & FIELD_MASS_FLUX_Z)
     mass_flux_z[OPS_ACC1(0, 0, 0)] = mass_flux_z[OPS_ACC1(0, -2, 0)];
 }
 

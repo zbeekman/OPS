@@ -19,9 +19,9 @@ int xdim1_update_halo_kernel3_plus_4_b;
 inline void update_halo_kernel3_plus_4_b(double *vol_flux_x,
                                          double *mass_flux_x,
                                          const int *fields) {
-  if (fields[FIELD_VOL_FLUX_X] == 1)
+  if ((*fields) & FIELD_VOL_FLUX_X)
     vol_flux_x[OPS_ACC0(0, 0)] = vol_flux_x[OPS_ACC0(0, -4)];
-  if (fields[FIELD_MASS_FLUX_X] == 1)
+  if ((*fields) & FIELD_MASS_FLUX_X)
     mass_flux_x[OPS_ACC1(0, 0)] = mass_flux_x[OPS_ACC1(0, -4)];
 }
 
@@ -29,9 +29,9 @@ inline void update_halo_kernel3_plus_4_b(double *vol_flux_x,
 #undef OPS_ACC1
 
 void update_halo_kernel3_plus_4_b_c_wrapper(double *p_a0, double *p_a1,
-                                            int *p_a2, int x_size, int y_size) {
+                                            int p_a2, int x_size, int y_size) {
 #ifdef OPS_GPU
-#pragma acc parallel deviceptr(p_a0, p_a1, p_a2)
+#pragma acc parallel deviceptr(p_a0, p_a1)
 #pragma acc loop
 #endif
   for (int n_y = 0; n_y < y_size; n_y++) {
@@ -42,7 +42,7 @@ void update_halo_kernel3_plus_4_b_c_wrapper(double *p_a0, double *p_a1,
       update_halo_kernel3_plus_4_b(
           p_a0 + n_x * 1 * 1 + n_y * xdim0_update_halo_kernel3_plus_4_b * 1 * 1,
           p_a1 + n_x * 1 * 1 + n_y * xdim1_update_halo_kernel3_plus_4_b * 1 * 1,
-          p_a2);
+          &p_a2);
     }
   }
 }

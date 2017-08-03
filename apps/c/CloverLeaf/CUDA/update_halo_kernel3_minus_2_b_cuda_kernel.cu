@@ -20,9 +20,9 @@ __device__
     inline void
     update_halo_kernel3_minus_2_b_gpu(double *vol_flux_x, double *mass_flux_x,
                                       const int *fields) {
-  if (fields[FIELD_VOL_FLUX_X] == 1)
+  if ((*fields) & FIELD_VOL_FLUX_X)
     vol_flux_x[OPS_ACC0(0, 0)] = -(vol_flux_x[OPS_ACC0(-2, 0)]);
-  if (fields[FIELD_MASS_FLUX_X] == 1)
+  if ((*fields) & FIELD_MASS_FLUX_X)
     mass_flux_x[OPS_ACC1(0, 0)] = -(mass_flux_x[OPS_ACC1(-2, 0)]);
 }
 
@@ -31,8 +31,8 @@ __device__
 
 __global__ void ops_update_halo_kernel3_minus_2_b(double *__restrict arg0,
                                                   double *__restrict arg1,
-                                                  const int *__restrict arg2,
-                                                  int size0, int size1) {
+                                                  const int arg2, int size0,
+                                                  int size1) {
 
   int idx_y = blockDim.y * blockIdx.y + threadIdx.y;
   int idx_x = blockDim.x * blockIdx.x + threadIdx.x;
@@ -41,7 +41,7 @@ __global__ void ops_update_halo_kernel3_minus_2_b(double *__restrict arg0,
   arg1 += idx_x * 1 * 1 + idx_y * 1 * 1 * xdim1_update_halo_kernel3_minus_2_b;
 
   if (idx_x < size0 && idx_y < size1) {
-    update_halo_kernel3_minus_2_b_gpu(arg0, arg1, arg2);
+    update_halo_kernel3_minus_2_b_gpu(arg0, arg1, &arg2);
   }
 }
 
@@ -116,25 +116,10 @@ void ops_par_loop_update_halo_kernel3_minus_2_b(char const *name,
     xdim1_update_halo_kernel3_minus_2_b_h = xdim1;
   }
 
-  int *arg2h = (int *)arg2.data;
-
   dim3 grid((x_size - 1) / OPS_block_size_x + 1,
             (y_size - 1) / OPS_block_size_y + 1, 1);
   dim3 tblock(OPS_block_size_x, OPS_block_size_y, 1);
 
-  int consts_bytes = 0;
-
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-
-  reallocConstArrays(consts_bytes);
-
-  consts_bytes = 0;
-  arg2.data = OPS_consts_h + consts_bytes;
-  arg2.data_d = OPS_consts_d + consts_bytes;
-  for (int d = 0; d < NUM_FIELDS; d++)
-    ((int *)arg2.data)[d] = arg2h[d];
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-  mvConstArraysToDevice(consts_bytes);
   int dat0 = args[0].dat->elem_size;
   int dat1 = args[1].dat->elem_size;
 
@@ -182,7 +167,7 @@ void ops_par_loop_update_halo_kernel3_minus_2_b(char const *name,
 
   // call kernel wrapper function, passing in pointers to data
   ops_update_halo_kernel3_minus_2_b<<<grid, tblock>>>(
-      (double *)p_a[0], (double *)p_a[1], (int *)arg2.data_d, x_size, y_size);
+      (double *)p_a[0], (double *)p_a[1], *(int *)arg2.data, x_size, y_size);
 
   if (OPS_diags > 1) {
     cutilSafeCall(cudaDeviceSynchronize());

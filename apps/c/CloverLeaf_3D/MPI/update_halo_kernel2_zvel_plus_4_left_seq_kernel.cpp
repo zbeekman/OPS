@@ -5,9 +5,9 @@
 // user function
 inline void update_halo_kernel2_zvel_plus_4_left(double *zvel0, double *zvel1,
                                                  const int *fields) {
-  if (fields[FIELD_ZVEL0] == 1)
+  if ((*fields) & FIELD_ZVEL0)
     zvel0[OPS_ACC0(0, 0, 0)] = zvel0[OPS_ACC0(4, 0, 0)];
-  if (fields[FIELD_ZVEL1] == 1)
+  if ((*fields) & FIELD_ZVEL1)
     zvel1[OPS_ACC1(0, 0, 0)] = zvel1[OPS_ACC1(4, 0, 0)];
 }
 

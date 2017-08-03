@@ -18,7 +18,7 @@ int ydim1_update_halo_kernel5_minus_4_front_h = -1;
 extern "C" {
 #endif
 void update_halo_kernel5_minus_4_front_c_wrapper(double *p_a0, double *p_a1,
-                                                 int *p_a2, int x_size,
+                                                 int p_a2, int x_size,
                                                  int y_size, int z_size);
 
 #ifdef __cplusplus
@@ -103,21 +103,6 @@ void ops_par_loop_update_halo_kernel5_minus_4_front(char const *name,
     ydim1_update_halo_kernel5_minus_4_front_h = ydim1;
   }
 
-  int *arg2h = (int *)arg2.data;
-// Upload large globals
-#ifdef OPS_GPU
-  int consts_bytes = 0;
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-  reallocConstArrays(consts_bytes);
-  consts_bytes = 0;
-  args[2].data = OPS_consts_h + consts_bytes;
-  args[2].data_d = OPS_consts_d + consts_bytes;
-  for (int d = 0; d < NUM_FIELDS; d++)
-    ((int *)args[2].data)[d] = arg2h[d];
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-  mvConstArraysToDevice(consts_bytes);
-#endif // OPS_GPU
-
   // set up initial pointers
   int base0 = args[0].dat->base_offset +
               args[0].dat->elem_size * start[0] * args[0].stencil->stride[0];
@@ -147,11 +132,7 @@ void ops_par_loop_update_halo_kernel5_minus_4_front(char const *name,
   double *p_a1 = (double *)((char *)args[1].data + base1);
 #endif
 
-#ifdef OPS_GPU
-  int *p_a2 = (int *)args[2].data_d;
-#else
-  int *p_a2 = arg2h;
-#endif
+  int *p_a2 = (int *)args[2].data;
 
 #ifdef OPS_GPU
   ops_H_D_exchanges_device(args, 3);
@@ -170,7 +151,7 @@ void ops_par_loop_update_halo_kernel5_minus_4_front(char const *name,
     OPS_kernels[139].mpi_time += t2 - t1;
   }
 
-  update_halo_kernel5_minus_4_front_c_wrapper(p_a0, p_a1, p_a2, x_size, y_size,
+  update_halo_kernel5_minus_4_front_c_wrapper(p_a0, p_a1, *p_a2, x_size, y_size,
                                               z_size);
 
   if (OPS_diags > 1) {

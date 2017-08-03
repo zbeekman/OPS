@@ -33,9 +33,9 @@ void update_halo_kernel2_zvel_minus_2_front_c_wrapper(
     for (int n_y = 0; n_y < y_size; n_y++) {
       for (int n_x = 0; n_x < x_size; n_x++) {
 
-        if (fields[FIELD_ZVEL0] == 1)
+        if ((*fields) & FIELD_ZVEL0)
           zvel0[OPS_ACC0(0, 0, 0)] = -zvel0[OPS_ACC0(0, 0, -2)];
-        if (fields[FIELD_ZVEL1] == 1)
+        if ((*fields) & FIELD_ZVEL1)
           zvel1[OPS_ACC1(0, 0, 0)] = -zvel1[OPS_ACC1(0, 0, -2)];
       }
     }

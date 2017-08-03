@@ -90,8 +90,6 @@ void ops_par_loop_update_halo_kernel2_yvel_plus_2_a(char const *name,
   int dat0 = args[0].dat->elem_size;
   int dat1 = args[1].dat->elem_size;
 
-  int *arg2h = (int *)arg2.data;
-
   // set up initial pointers
   int d_m[OPS_MAX_DIM];
 #ifdef OPS_MPI
@@ -124,7 +122,7 @@ void ops_par_loop_update_halo_kernel2_yvel_plus_2_a(char const *name,
                                          args[1].dat->base[1] - d_m[1]);
   double *p_a1 = (double *)((char *)args[1].data + base1);
 
-  int *p_a2 = arg2h;
+  int *p_a2 = (int *)args[2].data;
 
   ops_H_D_exchanges_host(args, 3);
   ops_halo_exchanges(args, 3, range);

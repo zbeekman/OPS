@@ -26,9 +26,9 @@ int ydim1_update_halo_kernel2_yvel_plus_4_back;
 
 inline void update_halo_kernel2_yvel_plus_4_back(double *yvel0, double *yvel1,
                                                  const int *fields) {
-  if (fields[FIELD_YVEL0] == 1)
+  if ((*fields) & FIELD_YVEL0)
     yvel0[OPS_ACC0(0, 0, 0)] = yvel0[OPS_ACC0(0, 0, 4)];
-  if (fields[FIELD_YVEL1] == 1)
+  if ((*fields) & FIELD_YVEL1)
     yvel1[OPS_ACC1(0, 0, 0)] = yvel1[OPS_ACC1(0, 0, 4)];
 }
 
@@ -36,10 +36,10 @@ inline void update_halo_kernel2_yvel_plus_4_back(double *yvel0, double *yvel1,
 #undef OPS_ACC1
 
 void update_halo_kernel2_yvel_plus_4_back_c_wrapper(double *p_a0, double *p_a1,
-                                                    int *p_a2, int x_size,
+                                                    int p_a2, int x_size,
                                                     int y_size, int z_size) {
 #ifdef OPS_GPU
-#pragma acc parallel deviceptr(p_a0, p_a1, p_a2)
+#pragma acc parallel deviceptr(p_a0, p_a1)
 #pragma acc loop
 #endif
   for (int n_z = 0; n_z < z_size; n_z++) {
@@ -60,7 +60,7 @@ void update_halo_kernel2_yvel_plus_4_back_c_wrapper(double *p_a0, double *p_a1,
                 n_y * xdim1_update_halo_kernel2_yvel_plus_4_back * 1 * 1 +
                 n_z * xdim1_update_halo_kernel2_yvel_plus_4_back *
                     ydim1_update_halo_kernel2_yvel_plus_4_back * 1,
-            p_a2);
+            &p_a2);
       }
     }
   }

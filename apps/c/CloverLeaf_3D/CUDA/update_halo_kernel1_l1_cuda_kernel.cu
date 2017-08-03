@@ -68,19 +68,19 @@ __device__
                                double *energy0, double *energy1,
                                double *pressure, double *viscosity,
                                double *soundspeed, const int *fields) {
-  if (fields[FIELD_DENSITY0] == 1)
+  if ((*fields) & FIELD_DENSITY0)
     density0[OPS_ACC0(0, 0, 0)] = density0[OPS_ACC0(1, 0, 0)];
-  if (fields[FIELD_DENSITY1] == 1)
+  if ((*fields) & FIELD_DENSITY1)
     density1[OPS_ACC1(0, 0, 0)] = density1[OPS_ACC1(1, 0, 0)];
-  if (fields[FIELD_ENERGY0] == 1)
+  if ((*fields) & FIELD_ENERGY0)
     energy0[OPS_ACC2(0, 0, 0)] = energy0[OPS_ACC2(1, 0, 0)];
-  if (fields[FIELD_ENERGY1] == 1)
+  if ((*fields) & FIELD_ENERGY1)
     energy1[OPS_ACC3(0, 0, 0)] = energy1[OPS_ACC3(1, 0, 0)];
-  if (fields[FIELD_PRESSURE] == 1)
+  if ((*fields) & FIELD_PRESSURE)
     pressure[OPS_ACC4(0, 0, 0)] = pressure[OPS_ACC4(1, 0, 0)];
-  if (fields[FIELD_VISCOSITY] == 1)
+  if ((*fields) & FIELD_VISCOSITY)
     viscosity[OPS_ACC5(0, 0, 0)] = viscosity[OPS_ACC5(1, 0, 0)];
-  if (fields[FIELD_SOUNDSPEED] == 1)
+  if ((*fields) & FIELD_SOUNDSPEED)
     soundspeed[OPS_ACC6(0, 0, 0)] = soundspeed[OPS_ACC6(1, 0, 0)];
 }
 
@@ -92,12 +92,10 @@ __device__
 #undef OPS_ACC5
 #undef OPS_ACC6
 
-__global__ void
-ops_update_halo_kernel1_l1(double *__restrict arg0, double *__restrict arg1,
-                           double *__restrict arg2, double *__restrict arg3,
-                           double *__restrict arg4, double *__restrict arg5,
-                           double *__restrict arg6, const int *__restrict arg7,
-                           int size0, int size1, int size2) {
+__global__ void ops_update_halo_kernel1_l1(
+    double *__restrict arg0, double *__restrict arg1, double *__restrict arg2,
+    double *__restrict arg3, double *__restrict arg4, double *__restrict arg5,
+    double *__restrict arg6, const int arg7, int size0, int size1, int size2) {
 
   int idx_z = blockDim.z * blockIdx.z + threadIdx.z;
   int idx_y = blockDim.y * blockIdx.y + threadIdx.y;
@@ -126,7 +124,7 @@ ops_update_halo_kernel1_l1(double *__restrict arg0, double *__restrict arg1,
               ydim6_update_halo_kernel1_l1;
 
   if (idx_x < size0 && idx_y < size1 && idx_z < size2) {
-    update_halo_kernel1_l1_gpu(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    update_halo_kernel1_l1_gpu(arg0, arg1, arg2, arg3, arg4, arg5, arg6, &arg7);
   }
 }
 
@@ -250,25 +248,10 @@ void ops_par_loop_update_halo_kernel1_l1(char const *name, ops_block block,
     ydim6_update_halo_kernel1_l1_h = ydim6;
   }
 
-  int *arg7h = (int *)arg7.data;
-
   dim3 grid((x_size - 1) / OPS_block_size_x + 1,
             (y_size - 1) / OPS_block_size_y + 1, z_size);
   dim3 tblock(OPS_block_size_x, OPS_block_size_y, 1);
 
-  int consts_bytes = 0;
-
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-
-  reallocConstArrays(consts_bytes);
-
-  consts_bytes = 0;
-  arg7.data = OPS_consts_h + consts_bytes;
-  arg7.data_d = OPS_consts_d + consts_bytes;
-  for (int d = 0; d < NUM_FIELDS; d++)
-    ((int *)arg7.data)[d] = arg7h[d];
-  consts_bytes += ROUND_UP(NUM_FIELDS * sizeof(int));
-  mvConstArraysToDevice(consts_bytes);
   int dat0 = args[0].dat->elem_size;
   int dat1 = args[1].dat->elem_size;
   int dat2 = args[2].dat->elem_size;
@@ -425,7 +408,7 @@ void ops_par_loop_update_halo_kernel1_l1(char const *name, ops_block block,
   // call kernel wrapper function, passing in pointers to data
   ops_update_halo_kernel1_l1<<<grid, tblock>>>(
       (double *)p_a[0], (double *)p_a[1], (double *)p_a[2], (double *)p_a[3],
-      (double *)p_a[4], (double *)p_a[5], (double *)p_a[6], (int *)arg7.data_d,
+      (double *)p_a[4], (double *)p_a[5], (double *)p_a[6], *(int *)arg7.data,
       x_size, y_size, z_size);
 
   if (OPS_diags > 1) {

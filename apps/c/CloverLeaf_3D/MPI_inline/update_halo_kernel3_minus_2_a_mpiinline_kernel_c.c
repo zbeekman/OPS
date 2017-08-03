@@ -35,9 +35,9 @@ void update_halo_kernel3_minus_2_a_c_wrapper(double *restrict vol_flux_x,
     for (int n_y = 0; n_y < y_size; n_y++) {
       for (int n_x = 0; n_x < x_size; n_x++) {
 
-        if (fields[FIELD_VOL_FLUX_X] == 1)
+        if ((*fields) & FIELD_VOL_FLUX_X)
           vol_flux_x[OPS_ACC0(0, 0, 0)] = -(vol_flux_x[OPS_ACC0(2, 0, 0)]);
-        if (fields[FIELD_MASS_FLUX_X] == 1)
+        if ((*fields) & FIELD_MASS_FLUX_X)
           mass_flux_x[OPS_ACC1(0, 0, 0)] = -(mass_flux_x[OPS_ACC1(2, 0, 0)]);
       }
     }

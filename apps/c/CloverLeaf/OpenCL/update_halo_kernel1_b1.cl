@@ -62,23 +62,23 @@ inline void update_halo_kernel1_b1(
     __global double *restrict density0, __global double *restrict density1,
     __global double *restrict energy0, __global double *restrict energy1,
     __global double *restrict pressure, __global double *restrict viscosity,
-    __global double *restrict soundspeed, const __global int *restrict fields)
+    __global double *restrict soundspeed, const int *restrict fields)
 
 {
 
-  if (fields[FIELD_DENSITY0] == 1)
+  if ((*fields) & FIELD_DENSITY0)
     density0[OPS_ACC0(0, 0)] = density0[OPS_ACC0(0, 1)];
-  if (fields[FIELD_DENSITY1] == 1)
+  if ((*fields) & FIELD_DENSITY1)
     density1[OPS_ACC1(0, 0)] = density1[OPS_ACC1(0, 1)];
-  if (fields[FIELD_ENERGY0] == 1)
+  if ((*fields) & FIELD_ENERGY0)
     energy0[OPS_ACC2(0, 0)] = energy0[OPS_ACC2(0, 1)];
-  if (fields[FIELD_ENERGY1] == 1)
+  if ((*fields) & FIELD_ENERGY1)
     energy1[OPS_ACC3(0, 0)] = energy1[OPS_ACC3(0, 1)];
-  if (fields[FIELD_PRESSURE] == 1)
+  if ((*fields) & FIELD_PRESSURE)
     pressure[OPS_ACC4(0, 0)] = pressure[OPS_ACC4(0, 1)];
-  if (fields[FIELD_VISCOSITY] == 1)
+  if ((*fields) & FIELD_VISCOSITY)
     viscosity[OPS_ACC5(0, 0)] = viscosity[OPS_ACC5(0, 1)];
-  if (fields[FIELD_SOUNDSPEED] == 1)
+  if ((*fields) & FIELD_SOUNDSPEED)
     soundspeed[OPS_ACC6(0, 0)] = soundspeed[OPS_ACC6(0, 1)];
 }
 
@@ -86,10 +86,9 @@ __kernel void ops_update_halo_kernel1_b1(
     __global double *restrict arg0, __global double *restrict arg1,
     __global double *restrict arg2, __global double *restrict arg3,
     __global double *restrict arg4, __global double *restrict arg5,
-    __global double *restrict arg6, __global const int *restrict arg7,
-    const int base0, const int base1, const int base2, const int base3,
-    const int base4, const int base5, const int base6, const int size0,
-    const int size1) {
+    __global double *restrict arg6, const int arg7, const int base0,
+    const int base1, const int base2, const int base3, const int base4,
+    const int base5, const int base6, const int size0, const int size1) {
 
   int idx_y = get_global_id(1);
   int idx_x = get_global_id(0);
@@ -109,6 +108,6 @@ __kernel void ops_update_halo_kernel1_b1(
                                  idx_y * 1 * 1 * xdim5_update_halo_kernel1_b1],
                            &arg6[base6 + idx_x * 1 * 1 +
                                  idx_y * 1 * 1 * xdim6_update_halo_kernel1_b1],
-                           arg7);
+                           &arg7);
   }
 }
