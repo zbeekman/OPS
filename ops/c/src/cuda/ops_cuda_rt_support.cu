@@ -237,8 +237,8 @@ cudaStream_t stream_compute = 0;
 cudaStream_t stream = 0;
 
 int upload_me(int idx) {
-  //return !(idx>=7 && idx <= 31);
-  return 0;//!((idx>=6 && idx <= 31) || idx <=4);
+  //return !(idx>=5 && idx <= 31);
+  return !((idx>=5 && idx <= 31) || idx <=-1 || idx == 1 || idx == 3);
 }
 
 //TODO: v1 seems okay 
@@ -331,7 +331,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       }
       dats[idx].max_width = maxsize;
       //Allocate it a little larger, if not edge dat in this dim (or just unused)
-      if (maxsize > 1 && dats[idx].bytes == 0) maxsize += 17; 
+      if (maxsize > 1 && dats[idx].bytes == 0) maxsize += 13; 
       #warning should be 13
 
       // total required memory
