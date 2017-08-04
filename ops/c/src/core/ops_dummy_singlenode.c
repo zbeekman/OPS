@@ -157,6 +157,8 @@ void ops_compute_moment(double t, double *first, double *second) {
   *second = t * t;
 }
 
+float ops_transfer(float transfer) { return transfer; }
+
 void ops_printf(const char *format, ...) {
   va_list argptr;
   va_start(argptr, format);

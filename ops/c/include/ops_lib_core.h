@@ -439,6 +439,7 @@ void ops_mpi_reduce_double(ops_arg *args, double *data);
 void ops_mpi_reduce_int(ops_arg *args, int *data);
 
 void ops_compute_moment(double t, double *first, double *second);
+float ops_transfer(float transfer);
 
 void ops_dump3(ops_dat dat, const char *name);
 

@@ -19,9 +19,10 @@ void initialise();
 void diffuse();
 
 int main(int argc, char **argv) {
-  ops_init(argc, argv, 1);
+  ops_init(argc, argv, 2);
   initialise();
   diffuse();
+  ops_timing_output(stdout);
   ops_exit();
   return 0;
 }

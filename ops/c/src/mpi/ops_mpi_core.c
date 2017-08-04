@@ -125,6 +125,19 @@ void ops_compute_moment(double t, double *first, double *second) {
   *second = times_reduced[1] / (double)comm_size;
 }
 
+float ops_transfer(float transfer) {
+  int comm_size;
+  float transfer_reduced[0];
+  float trans[0];
+
+  trans[0] = transfer;
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+  MPI_Reduce(trans, transfer_reduced, 2, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+  transfer_reduced[0] = transfer_reduced[0] / comm_size;
+  return transfer_reduced[0];
+}
+
 int ops_is_root() {
   int my_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
