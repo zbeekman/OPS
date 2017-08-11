@@ -71,19 +71,19 @@ int profiler_on;
 int state_max;
 int complete;
 
-int fields[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+int fields;
 
 double dtold, dt, clover_time, dtinit, dtmin, dtmax, dtrise, dtu_safe, dtv_safe, dtw_safe, dtc_safe,
        dtdiv_safe, dtc, dtu, dtv, dtdiv;
 
-
+extern int ops_cyclic;
 double end_time;
 int end_step;
 int visit_frequency;
 int summary_frequency;
 int checkpoint_frequency;
 int use_vector_loops;
-extern int ops_cyclic;
+
 int jdt, kdt, ldt;
 
 void start();
@@ -124,10 +124,9 @@ int main(int argc, char **argv)
 
   double ct0, ct1, et0, et1;
   ops_timers(&ct0, &et0);
-
-  ops_checkpointing_initphase_done();
 ops_execute();
 ops_cyclic = 1;
+  ops_checkpointing_initphase_done();
   while(1) {
 
     step = step + 1;

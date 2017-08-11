@@ -1396,7 +1396,7 @@ bool ops_checkpointing_before(ops_arg *args, int nargs, int *range,
               // called, may be a little redundant), should make a loop_id
               // filter
     if (args[i].argtype == OPS_ARG_DAT && args[i].acc != OPS_READ &&
-        args[i].opt == 1) {
+        args[i].opt) {
       OPS_dat_ever_written[args[i].dat->index] = true;
     }
   }
@@ -1512,12 +1512,12 @@ bool ops_checkpointing_before(ops_arg *args, int nargs, int *range,
       if (args[i].argtype == OPS_ARG_DAT &&
           OPS_dat_ever_written[args[i].dat->index] &&
           OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-          args[i].acc != OPS_WRITE && args[i].opt == 1) {
+          args[i].acc != OPS_WRITE && args[i].opt) {
         // write it to disk
         save_dat(args[i].dat);
       } else if (args[i].argtype == OPS_ARG_DAT &&
                  OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-                 args[i].acc == OPS_WRITE && args[i].opt == 1) {
+                 args[i].acc == OPS_WRITE && args[i].opt) {
         save_dat_partial(args[i].dat, range);
       }
     }
@@ -1542,11 +1542,11 @@ bool ops_checkpointing_before(ops_arg *args, int nargs, int *range,
       if (args[i].argtype == OPS_ARG_DAT &&
           OPS_dat_ever_written[args[i].dat->index] &&
           OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-          args[i].acc != OPS_WRITE && args[i].opt == 1) {
+          args[i].acc != OPS_WRITE && args[i].opt) {
         save_dat(args[i].dat);
       } else if (args[i].argtype == OPS_ARG_DAT &&
                  OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-                 args[i].acc == OPS_WRITE && args[i].opt == 1) {
+                 args[i].acc == OPS_WRITE && args[i].opt) {
         save_dat_partial(args[i].dat, range);
       }
     }
@@ -1569,11 +1569,11 @@ bool ops_checkpointing_before(ops_arg *args, int nargs, int *range,
       if (args[i].argtype == OPS_ARG_DAT &&
           OPS_dat_ever_written[args[i].dat->index] &&
           OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-          args[i].acc != OPS_WRITE && args[i].opt == 1) {
+          args[i].acc != OPS_WRITE && args[i].opt) {
         save_dat(args[i].dat);
       } else if (args[i].argtype == OPS_ARG_DAT &&
                  OPS_dat_status[args[i].dat->index] == OPS_UNDECIDED &&
-                 args[i].acc == OPS_WRITE && args[i].opt == 1) {
+                 args[i].acc == OPS_WRITE && args[i].opt) {
         save_dat_partial(args[i].dat, range);
       }
     }

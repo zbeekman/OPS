@@ -132,7 +132,7 @@ endif
 ifeq ($(NV_ARCH),Fermi)
 	CODE_GEN_CUDA=-gencode arch=compute_20,code=sm_21
 else
-ifeq ($(NV_ARCH),Kepler)
+ifeq ($(NV_ARCH),Pascal)
 	CODE_GEN_CUDA=-gencode arch=compute_60,code=sm_60
 endif
 endif

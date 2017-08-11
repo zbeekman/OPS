@@ -19,8 +19,8 @@ int ydim1_update_halo_kernel3_minus_2_b_h = -1;
 __device__
 
 inline void update_halo_kernel3_minus_2_b_gpu(double *vol_flux_x, double *mass_flux_x, const int* fields) {
-  if(fields[FIELD_VOL_FLUX_X] == 1)  vol_flux_x[OPS_ACC0(0,0)]  = -(vol_flux_x[OPS_ACC0(-2,0)]);
-  if(fields[FIELD_MASS_FLUX_X] == 1) mass_flux_x[OPS_ACC1(0,0)] = -(mass_flux_x[OPS_ACC1(-2,0)]);
+  if((*fields) & FIELD_VOL_FLUX_X)  vol_flux_x[OPS_ACC0(0,0)]  = -(vol_flux_x[OPS_ACC0(-2,0)]);
+  if((*fields) & FIELD_MASS_FLUX_X) mass_flux_x[OPS_ACC1(0,0)] = -(mass_flux_x[OPS_ACC1(-2,0)]);
 }
 
 
@@ -32,7 +32,7 @@ inline void update_halo_kernel3_minus_2_b_gpu(double *vol_flux_x, double *mass_f
 __global__ void ops_update_halo_kernel3_minus_2_b(
 double* __restrict arg0,
 double* __restrict arg1,
-const int* __restrict arg2,
+const int arg2,
 int size0,
 int size1 ){
 
@@ -44,7 +44,7 @@ int size1 ){
   arg1 += idx_x * 1*1 + idx_y * 1*1 * xdim1_update_halo_kernel3_minus_2_b;
 
   if (idx_x < size0 && idx_y < size1) {
-    update_halo_kernel3_minus_2_b_gpu(arg0, arg1, arg2);
+    update_halo_kernel3_minus_2_b_gpu(arg0, arg1, &arg2);
   }
 
 }
@@ -100,23 +100,12 @@ void ops_par_loop_update_halo_kernel3_minus_2_b_execute(ops_kernel_descriptor *d
   }
 
 
-  int *arg2h = (int *)arg2.data;
 
   dim3 grid( (x_size-1)/OPS_block_size_x+ 1, (y_size-1)/OPS_block_size_y + 1, 1);
   dim3 tblock(OPS_block_size_x,OPS_block_size_y,1);
 
-  int consts_bytes = 0;
 
-  consts_bytes += ROUND_UP(NUM_FIELDS*sizeof(int));
 
-  reallocConstArrays(consts_bytes);
-
-  consts_bytes = 0;
-  arg2.data = OPS_consts_h + consts_bytes;
-  arg2.data_d = OPS_consts_d + consts_bytes;
-  for (int d=0; d<NUM_FIELDS; d++) ((int *)arg2.data)[d] = arg2h[d];
-  consts_bytes += ROUND_UP(NUM_FIELDS*sizeof(int));
-  mvConstArraysToDevice(consts_bytes);
 
   char *p_a[3];
   int dat0 = args[0].dat->elem_size;
@@ -149,7 +138,7 @@ void ops_par_loop_update_halo_kernel3_minus_2_b_execute(ops_kernel_descriptor *d
 
   //call kernel wrapper function, passing in pointers to data
   ops_update_halo_kernel3_minus_2_b<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
-           (int *)arg2.data_d,x_size, y_size);
+           *(int *)arg2.data,x_size, y_size);
 
   if (OPS_diags>1) {
     cutilSafeCall(cudaStreamSynchronize(stream));
@@ -191,8 +180,8 @@ void ops_par_loop_update_halo_kernel3_minus_2_b(char const *name, ops_block bloc
   desc->args[1] = arg1;
   desc->hash = ((desc->hash << 5) + desc->hash) + arg1.dat->index;
   desc->args[2] = arg2;
-  char *tmp = (char*)malloc(NUM_FIELDS*sizeof(int));
-  memcpy(tmp, arg2.data,NUM_FIELDS*sizeof(int));
+  char *tmp = (char*)malloc(1*sizeof(int));
+  memcpy(tmp, arg2.data,1*sizeof(int));
   desc->args[2].data = tmp;
   desc->function = ops_par_loop_update_halo_kernel3_minus_2_b_execute;
   if (OPS_diags > 1) {

@@ -191,7 +191,7 @@ void ops_compute_mpi_dependencies(int loop, int d, int *start, int *end, int *bi
     for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
       // For any dataset written (i.e. not read)
       if (LOOPARG.argtype == OPS_ARG_DAT &&
-        LOOPARG.opt == 1 &&
+        LOOPARG.opt &&
         LOOPARG.acc != OPS_READ) {
 
         //Left neighbour's end index
@@ -209,7 +209,7 @@ void ops_compute_mpi_dependencies(int loop, int d, int *start, int *end, int *bi
     for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
   // For any dataset written (i.e. not read)
       if (LOOPARG.argtype == OPS_ARG_DAT &&
-        LOOPARG.opt == 1 &&
+        LOOPARG.opt &&
         LOOPARG.acc != OPS_READ) {
 
         int intersect_begin = 0;
@@ -226,7 +226,7 @@ void ops_compute_mpi_dependencies(int loop, int d, int *start, int *end, int *bi
   for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
           // For any dataset read (i.e. not write-only)
     if (LOOPARG.argtype == OPS_ARG_DAT &&
-      LOOPARG.opt == 1 &&
+      LOOPARG.opt &&
       LOOPARG.acc != OPS_WRITE) {
       int d_m_min = 0; // Find biggest positive/negative direction stencil
                            // point for this dimension
@@ -482,7 +482,7 @@ int ops_construct_tile_plan() {
               for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
               // For any dataset written (i.e. not read)
                 if (LOOPARG.argtype == OPS_ARG_DAT &&
-                  LOOPARG.opt == 1 &&
+                  LOOPARG.opt &&
                   LOOPARG.acc != OPS_READ) {
                 // Start index is the smallest across all of the dependencies, but
                 // no smaller than the loop range
@@ -527,7 +527,7 @@ int ops_construct_tile_plan() {
           for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
             // For any dataset written (i.e. not read)
             if (LOOPARG.argtype == OPS_ARG_DAT &&
-                LOOPARG.opt == 1 &&
+                LOOPARG.opt  &&
                 LOOPARG.acc != OPS_READ) {
               // End index is the greatest across all of the dependencies, but
               // no greater than the loop range
@@ -560,7 +560,7 @@ int ops_construct_tile_plan() {
             // Look at write dependencies of datasets being accessed
             for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
               if (LOOPARG.argtype == OPS_ARG_DAT &&
-                  LOOPARG.opt == 1 &&
+                  LOOPARG.opt &&
                   data_write_deps[LOOPARG.dat->index]
                                  [tile * OPS_MAX_DIM * 2 + 2 * d + 1] != -INT_MAX ) {
                 int d_m_min = 0;  // Find biggest positive/negative direction
@@ -641,7 +641,7 @@ int ops_construct_tile_plan() {
         for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
           // For any dataset read (i.e. not write-only)
           if (LOOPARG.argtype == OPS_ARG_DAT &&
-              LOOPARG.opt == 1 &&
+              LOOPARG.opt &&
               LOOPARG.acc != OPS_WRITE) {
 
             // Find biggest positive/negative direction stencil
@@ -683,7 +683,7 @@ int ops_construct_tile_plan() {
         for (int arg = 0; arg < ops_kernel_list[loop]->nargs; arg++) {
           // For any dataset read (i.e. not write-only)
           if (LOOPARG.argtype == OPS_ARG_DAT &&
-              LOOPARG.opt == 1 &&
+              LOOPARG.opt &&
               LOOPARG.acc != OPS_READ) {
             // Extend dependency range with stencil
             data_write_deps[LOOPARG.dat->index]
@@ -727,14 +727,14 @@ int ops_construct_tile_plan() {
   for (int i = 0; i < OPS_dat_index; i++) datasets_access_type[i] = -1;
   for (int i = 0; i < ops_kernel_list.size(); i++) {
     for (int arg = 0; arg < ops_kernel_list[i]->nargs; arg++) {
-      if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt == 1 && datasets_accessed[ops_kernel_list[i]->args[arg].dat->index] == -1) {
+      if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt && datasets_accessed[ops_kernel_list[i]->args[arg].dat->index] == -1) {
         datasets_accessed[ops_kernel_list[i]->args[arg].dat->index] = (ops_kernel_list[i]->args[arg].acc == OPS_WRITE ? 0 : 1);
         if (ops_kernel_list[i]->args[arg].acc != OPS_WRITE)
           dats_to_exchange.push_back(ops_kernel_list[i]->args[arg].dat);
          if (OPS_diags > 5)
               ops_printf("First access to dataset %s is %d (0-write, 1-read)\n",ops_kernel_list[i]->args[arg].dat->name, datasets_accessed[ops_kernel_list[i]->args[arg].dat->index]);
       }
-      if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt == 1) {
+      if (ops_kernel_list[i]->args[arg].argtype == OPS_ARG_DAT && ops_kernel_list[i]->args[arg].opt) {
         //-1 never accessed
         //0 written first
         //1 read only
