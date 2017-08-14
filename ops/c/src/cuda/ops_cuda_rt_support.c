@@ -225,7 +225,10 @@ void ops_cuda_get_data(ops_dat dat) {
   else
     return;
   if (ops_managed) return;
-  if (ops_enable_tiling) return;
+  if (ops_enable_tiling) {
+    cutilSafeCall(cudaDeviceSynchronize());
+    return;
+  }
   int bytes = dat->elem_size;
   for (int i = 0; i < dat->block->dims; i++)
     bytes = bytes * dat->size[i];
