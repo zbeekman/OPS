@@ -387,8 +387,8 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   if (tile == 0) {
     cutilSafeCall(cudaStreamSynchronize(stream_copy_up));
     cutilSafeCall(cudaStreamSynchronize(stream_compute));
-    remove_trans(compctr,E_COMP);
-    remove_trans(upctr,E_UP);
+//    remove_trans(compctr,E_COMP);
+//    remove_trans(upctr,E_UP);
 
     //First time ever - initialise
     if (dats.size()==0) {
@@ -522,19 +522,19 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
           //printf("Tile 0 fetching to NEW slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld, delta %ld\n", dats[idx].curr_slot, dat->name, dat->data, base_ptr, dat->data_d,dats[idx].curr_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr,delta);
           dats[idx].actually_uploaded = 1;
           cutilSafeCall(cudaMemcpyAsync(dat->data_d+dats[idx].curr_offset, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-          add_trans_entry(E_UP, upctr, dat, tile, dats[idx].curr_slot,
-              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
+//          add_trans_entry(E_UP, upctr, dat, tile, dats[idx].curr_slot,
+//              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
+//              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
+//              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
         } else dats[idx].actually_uploaded = 0;
       //if not actually uploaded 
       } else if (dats[idx].actually_uploaded = 0 && (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx)))) {
           dats[idx].actually_uploaded = 1;
           cutilSafeCall(cudaMemcpyAsync(dat->data_d+dats[idx].curr_offset, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-          add_trans_entry(E_UP, upctr, dat, tile, dats[idx].curr_slot,
-              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
+//          add_trans_entry(E_UP, upctr, dat, tile, dats[idx].curr_slot,
+//              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
+//              dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
+//              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
       } //if partly uploaded
       else {
         //Missing some in the beginning
@@ -568,12 +568,12 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       dats[idx].copy_amount = 0;
     }
     cudaEventRecord(e_copyup, stream_copy_up);
-    check_trans(upctr,E_UP);
+//    check_trans(upctr,E_UP);
 
   }
 #ifdef NOPREFETCH
   if (tile != total_tiles-1) {
-  if (tile == 0) {cutilSafeCall(cudaStreamSynchronize(stream_copy_down)); remove_trans(downctr,E_DOWN);}
+  if (tile == 0) {cutilSafeCall(cudaStreamSynchronize(stream_copy_down)); /*remove_trans(downctr,E_DOWN);*/}
 #endif
   upctr++;
   //upload next tile - leave a few rows spare if next tile's dependency range is bigger
@@ -609,10 +609,10 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       dats[idx].actually_uploaded = 1;
       cutilSafeCall(cudaMemcpyAsync(dat->data_d + dats[idx].curr_offset + extra_offset,
             dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-      add_trans_entry(E_UP, upctr, dat, next_tile, 0,
-          dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-          dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-          base_ptr, end_ptr, dats[idx].curr_offset + extra_offset, dats[idx].curr_offset+end_ptr-base_ptr);
+//      add_trans_entry(E_UP, upctr, dat, next_tile, 0,
+//          dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
+//          dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
+//          base_ptr, end_ptr, dats[idx].curr_offset + extra_offset, dats[idx].curr_offset+end_ptr-base_ptr);
     } else dats[idx].actually_uploaded = 0;
     if (next_tile == 0) { //Speculative prefetch
       dats[idx].copy_from = 0;
@@ -621,65 +621,10 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       dats[idx].copy_from = dats[idx].last_offset + dats[idx].last_size - extra_offset;
       dats[idx].copy_amount = extra_offset;
     }
-    /*
-    if (dats[idx].curr_slot < 2) {
-      dats[idx].curr_slot++; //Smaller than two, so just increment
-      dats[idx].last_offset = dats[idx].curr_offset;
-      if (next_tile == 0) {
-        dats[idx].curr_offset = dats[idx].bytes/3 * dats[idx].curr_slot;// + delta;//TODO: need this?
-        if (dats[idx].curr_offset <  dats[idx].last_offset + dats[idx].curr_size) printf("Error: size/3*slot is less than previous offset+size\n");
-      } else
-        dats[idx].curr_offset += dats[idx].curr_size; //end of previous
-      dats[idx].last_size = dats[idx].curr_size;
-      dats[idx].curr_size = end_ptr-base_ptr;
-      if (dats[idx].curr_offset + end_ptr-base_ptr > dats[idx].bytes) printf("Error, out of bounds copy for %s: copying tile %d to slot %d: %p+%ld size %ld, but size is %ld\n",dat->name, next_tile, dats[idx].curr_slot, dat->data_d, dats[idx].curr_offset, end_ptr - base_ptr, dats[idx].bytes);
-      if (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx))) { //read first 
-//        printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld, delta %ld\n", next_tile, dats[idx].curr_slot, dat->name, dat->data, base_ptr, dat->data_d, dats[idx].curr_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr,next_tile == 0 ? delta : 0);
-        dats[idx].actually_uploaded = 1;
-        cutilSafeCall(cudaMemcpyAsync(dat->data_d + dats[idx].curr_offset,
-              dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-          add_trans_entry(E_UP, upctr, dat, next_tile, dats[idx].curr_slot,
-              dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-              dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
-      } else dats[idx].actually_uploaded = 0;
-      dats[idx].copy_from = 0;
-      dats[idx].copy_amount = 0;
-    } else { //Going to first slot, need extra offset, and copy of previous tile's overlapping dependency range
-      //Compute Full range, then right begin - full begin is the extra offset
-      long base_ptr2, end_ptr2;
-      ops_get_offsets_deprange(base_ptr2, end_ptr2, dat, dependency_ranges, next_tile, total_tiles, 2, delta); //Full
-      long extra_offset = base_ptr - base_ptr2 + (next_tile == 0 ? delta : 0);
-      if (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx))) { //read first 
-        dats[idx].actually_uploaded = 1;
-//        printf("Prefetching tile %d to slot %d Copying %s from %p+%ld to %p+%ld (%p-%p), size %ld, delta %ld\n", next_tile, 0, dat->name, dat->data, base_ptr, dat->data_d, extra_offset, dat->data_d, dat->data_d + dats[idx].bytes, end_ptr-base_ptr, next_tile == 0 ? delta : 0);
-        cutilSafeCall(cudaMemcpyAsync(dat->data_d + extra_offset,
-              dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
-          add_trans_entry(E_UP, upctr, dat, next_tile, 0,
-              dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-              dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-              base_ptr, end_ptr, extra_offset, extra_offset+end_ptr-base_ptr);
-      } else dats[idx].actually_uploaded = 0;
-      if (next_tile == 0) { //Speculative prefetch
-        dats[idx].copy_from = 0;
-        dats[idx].copy_amount = 0;
-      } else {
-        dats[idx].copy_from = dats[idx].curr_offset + dats[idx].curr_size - extra_offset;
-        dats[idx].copy_amount = extra_offset;
-      }
-      dats[idx].curr_slot = 0;
-      dats[idx].last_offset = dats[idx].curr_offset;
-      dats[idx].curr_offset = (next_tile == 0 ? delta : 0);
-      dats[idx].last_size = dats[idx].curr_size;
-      dats[idx].curr_size = end_ptr - base_ptr2; //specify full size with extra on left
-      //Do an extra check for potential overlap
-      ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, 0, total_tiles, 2, delta);
-      if (dats[idx].curr_size + extra_offset > delta + end_ptr-base_ptr) printf("Warning - potential race condition %s delta %ld (%d-%d)\n",dat->name, delta,dependency_ranges[dat->index][0 * 2 * OPS_MAX_DIM + 2 * (dat->block->dims-1) + 1], dependency_ranges[dat->index][1 * 2 * OPS_MAX_DIM + 2 * (dat->block->dims-1) + 0]);
-    }*/
     dats[idx].curr_chunk[0] = dependency_ranges[dat->index][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0];
     dats[idx].curr_chunk[1] = dependency_ranges[dat->index][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1];
   }
-  check_trans(upctr,E_UP); 
+//  check_trans(upctr,E_UP); 
 #ifdef NOPREFETCH
     }
 #endif
@@ -689,11 +634,6 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
     tmp_item = TAILQ_NEXT(item, entries);
     ops_dat dat = item->dat;
-//#ifdef NOPREFETCH
-//    if (tile==0 || (tile < total_tiles-1 && dats[dat->index].curr_slot == 1) || (tile == total_tiles-1 && dats[dat->index].curr_slot == 0) || dat->size[dat->block->dims-1] == 1) {
-//#else
-//    if (tile==0 || dats[dat->index].curr_slot == 1 || dat->size[dat->block->dims-1] == 1) {  //If tile 0, or slot 0 or edge dat in last dim
-//#endif
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
       dat->base_offset = dats[dat->index].base_offset - base_ptr +
@@ -702,7 +642,6 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
 #else
            dats[dat->index].last_offset;
 #endif
-//    }
 /*      long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
       int curr_slot = 
@@ -720,13 +659,13 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   //Before actually starting the computations, make sure previous copies up finished
   cudaEventSynchronize(e_copyup);
   cudaEventDestroy(e_copyup);
-  int prev_up_idx = 
-#ifdef NOPREFETCH
-    (tile == total_tiles-1) ? upctr : (upctr - 1);
-#else
-    upctr - 1;
-#endif
-  remove_trans(prev_up_idx, E_UP);
+//  int prev_up_idx = 
+//#ifdef NOPREFETCH
+//    (tile == total_tiles-1) ? upctr : (upctr - 1);
+//#else
+//    upctr - 1;
+//#endif
+//  remove_trans(prev_up_idx, E_UP);
 //  check_trans(compctr,E_COMP); 
 }
 void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
@@ -736,7 +675,7 @@ void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &
 
   //Wait for compute to finish before downloading results
   cutilSafeCall(cudaStreamSynchronize(stream_compute));
-  remove_trans(compctr,E_COMP);
+//  remove_trans(compctr,E_COMP);
   
   downctr++;
   //TODO: do not copy back read-only data
@@ -771,37 +710,27 @@ void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &
 #else
       dats[idx].last_offset;
 #endif
-    //if we are not downloading from slot 0, then last_offset does not contain the left part of the tile
-/*#ifdef NOPREFETCH
-    if (!(tile < total_tiles-1 && dats[idx].curr_slot == 1) && !(tile == total_tiles-1 && dats[idx].curr_slot==0)) {
-#else
-    if (!(dats[idx].curr_slot == 1)) { //i.e. the one we just computed is slot 0
-#endif
-      long base_ptr2, end_ptr2;
-      ops_get_offsets_deprange(base_ptr2, end_ptr2, dat, dependency_ranges, tile, total_tiles, 1, delta); //Right
-      base_ptr_gpu -= (base_ptr2-base_ptr);
-    }*/
     if (datasets_access_type[idx] == 0 && !upload_me(idx) && ops_cyclic) continue;
     if (datasets_access_type[idx] != 1  && end_ptr-base_ptr>0) { //not read only
       //printf("Tile %d copying back %s to %p+%ld from %p+%ld, size %ld\n", tile, dat->name, dat->data, base_ptr, dat->data_d, base_ptr_gpu,end_ptr-base_ptr);
       cutilSafeCall(cudaMemcpyAsync(dat->data + base_ptr, dat->data_d+base_ptr_gpu, end_ptr - base_ptr, cudaMemcpyDeviceToHost, stream_copy_down));
-      int curr_slot = 
-#ifdef NOPREFETCH
-        (tile == total_tiles-1) ? dats[idx].curr_slot : mod(dats[idx].curr_slot-1,3);
-#else
-        mod(dats[idx].curr_slot-1,3);
-#endif
-      add_trans_entry(E_DOWN, downctr, dat, tile, curr_slot,
-          dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
-          dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
-          base_ptr, end_ptr, base_ptr_gpu, base_ptr_gpu+end_ptr-base_ptr);
+//      int curr_slot = 
+//#ifdef NOPREFETCH
+//        (tile == total_tiles-1) ? dats[idx].curr_slot : mod(dats[idx].curr_slot-1,3);
+//#else
+//        mod(dats[idx].curr_slot-1,3);
+//#endif
+//      add_trans_entry(E_DOWN, downctr, dat, tile, curr_slot,
+//          dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0],
+//          dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1],
+//          base_ptr, end_ptr, base_ptr_gpu, base_ptr_gpu+end_ptr-base_ptr);
     }
   }
-  check_trans(downctr,E_DOWN); 
+//  check_trans(downctr,E_DOWN); 
   
   //Wait for previous round of copies to finish
   cudaEventSynchronize(e_copydown);
   cudaEventDestroy(e_copydown);
-  remove_trans(downctr-1,E_DOWN);
+//  remove_trans(downctr-1,E_DOWN);
 }
 
