@@ -49,7 +49,7 @@ ifeq ($(OPS_COMPILER),intel)
 ifdef DEBUG
   CCFLAGS 	:= -O0 -g -xCORE_AVX2
 else
-  CCFLAGS 	:= -O3 -xHost #-qopenmp #vec-report -xAVX
+  CCFLAGS 	:= -O3 -xHost #-qopt-report5  #-xAVX -qopenmp
 endif
   CXX 		:= icpc
   CXXFLAGS 	:= $(CCFLAGS)
@@ -129,7 +129,7 @@ endif
 
 NVCC  := $(CUDA_INSTALL_PATH)/bin/nvcc
 ifndef DEBUG
-    NVCCFLAGS := -O3 -arch=sm_35 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
+    NVCCFLAGS := -O3 -arch=sm_52 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
     #NVCCFLAGS := -O3 -arch=sm_21 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
 else
     NVCCFLAGS := -O0 -g -G -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX
@@ -146,7 +146,9 @@ else
   CHKCC			:= $(CC)
 endif
 
+
 TRID_INSTALL_PATH := /home/mgiles/mudalige/TriDiagonal/Tridiag-Git/tridsolver/scalar/build
+#TRID_INSTALL_PATH := /home/knotman/git/tridsolver/scalar/build
 TRID_INC := -I$(TRID_INSTALL_PATH)/include
 TRID_LIB := -L$(TRID_INSTALL_PATH)/lib
 
@@ -246,6 +248,7 @@ mpi_opencl: mklib opencl $(OBJ)/ops_opencl_rt_support.o
 
 
 clean:
+	-rm -if $(OBJ)/*.optrpt #remove optimization output files from intel compiler
 	-rm -if $(OBJ)/*.o
 	-rm -if $(OBJ)/*~
 	-rm -if $(LIB)/*.a
