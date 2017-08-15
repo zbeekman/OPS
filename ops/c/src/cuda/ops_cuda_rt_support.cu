@@ -376,7 +376,7 @@ void ops_get_offsets_deprange(long &base_ptr, long &end_ptr, ops_dat dat, std::v
   //I need to offset the beginning fo tile 0, so tile 3 (laoding to slot 0) won't bite tile 1's tail
   //extra space needed is the difference between largest tile and left range of tile 0
   if (num_tiles > 1 && tile == 0 && nextrange > 1 && dependency_ranges[dat->index][0 * 2 * OPS_MAX_DIM + 2 * d + 1] - dependency_ranges[dat->index][0 * 2 * OPS_MAX_DIM + 2 * d + 0] > 1)
-    delta = MAX(3,(dats[dat->index].max_width - dependency_ranges[dat->index][1 * 2 * OPS_MAX_DIM + 2 * d + 0] + dependency_ranges[dat->index][0 * 2 * OPS_MAX_DIM + 2 * d + 0]))*prod;
+    delta = MAX(2,(dats[dat->index].max_width - dependency_ranges[dat->index][1 * 2 * OPS_MAX_DIM + 2 * d + 0] + dependency_ranges[dat->index][0 * 2 * OPS_MAX_DIM + 2 * d + 0]))*prod;
   else delta = 0;
 
   if (end_ptr < base_ptr) {printf("WARNING: overreaching depranges! Please check, shouldn't happen\n%s %ld-%ld, dep range: %d-%d prev %d - %d next start %d\n",dat->name, base_ptr, end_ptr, dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 0], dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 1],dependency_ranges[dat->index][mod(tile-1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 0],dependency_ranges[dat->index][mod(tile-1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 1], dependency_ranges[dat->index][mod(tile+1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 0]); end_ptr = base_ptr;} //zero ranges
@@ -465,7 +465,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
   //TODO: SoA: set dat->size[dat->block->dims-1]
   ops_dat_entry *item, *tmp_item;
   if (tile == 0) {
-#define NOPREFETCH
+//#define NOPREFETCH
 #ifdef NOPREFETCH
     upctr++; 
 #endif
@@ -528,7 +528,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
 //              base_ptr, end_ptr, dats[idx].curr_offset, dats[idx].curr_offset+end_ptr-base_ptr);
         } else dats[idx].actually_uploaded = 0;
       //if not actually uploaded 
-      } else if (dats[idx].actually_uploaded = 0 && (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx)))) {
+      } else if (dats[idx].actually_uploaded == 0 && (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx)))) {
           dats[idx].actually_uploaded = 1;
           cutilSafeCall(cudaMemcpyAsync(dat->data_d+dats[idx].curr_offset, dat->data + base_ptr, end_ptr - base_ptr, cudaMemcpyHostToDevice, stream_copy_up));
 //          add_trans_entry(E_UP, upctr, dat, tile, dats[idx].curr_slot,
@@ -541,6 +541,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
         if (dats[idx].curr_chunk[0] > dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0]) {
           long extra_data = slice_size * (dats[idx].curr_chunk[0] - dependency_ranges[idx][tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0]);
           dats[idx].curr_offset -= extra_data;
+          dats[idx].curr_size += extra_data;
           if (dats[idx].curr_offset < 0 || (dats[idx].curr_slot>0 && dats[idx].curr_offset < (dats[idx].last_offset + dats[idx].last_size)))
             printf("Error: missing left side of tile 0 overwriting previous tile or offset < 0\n");
           if (datasets_access_type[idx] > 0 || (datasets_access_type[idx] == 0 && upload_me(idx))) //read first
@@ -600,7 +601,12 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
     ops_get_offsets_deprange(base_ptr2, end_ptr2, dat, dependency_ranges, next_tile, total_tiles, 2, delta); //Full
     long extra_offset = base_ptr - base_ptr2;
     dats[idx].last_offset = dats[idx].curr_offset;
-    dats[idx].curr_offset = (dats[idx].bytes/3) * dats[idx].curr_slot;
+    if (next_tile == 0) {
+      long slice_size = (end_ptr - base_ptr) / (dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 1]-
+          dependency_ranges[idx][next_tile * 2 * OPS_MAX_DIM + 2 * (dat->block->dims - 1) + 0]);
+      dats[idx].curr_offset = (dats[idx].bytes/3) * dats[idx].curr_slot + 2*slice_size;
+    } else
+      dats[idx].curr_offset = (dats[idx].bytes/3) * dats[idx].curr_slot;
     dats[idx].last_size = dats[idx].curr_size;
     dats[idx].curr_size = end_ptr - base_ptr2; //Full size
     if (dats[idx].curr_offset + end_ptr-base_ptr2 > (dats[idx].bytes/3)*(dats[idx].curr_slot+1)) printf("Error, out of bounds copy for %s: copying tile %d to slot %d: %p+%ld size %ld, but size is %ld\n",dat->name, next_tile, dats[idx].curr_slot, dat->data_d, dats[idx].curr_offset, end_ptr - base_ptr2, (dats[idx].bytes/3)*(dats[idx].curr_slot+1));
