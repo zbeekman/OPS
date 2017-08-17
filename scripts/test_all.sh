@@ -26,6 +26,8 @@ cd ../mb_shsgc/Max_datatransfer
 ./test.sh
 cd ../../multiDim_HDF5
 ./test.sh
+cd ../complex_numbers
+./test.sh
 
 echo "************Testing Fortran Applications *****************"
 cd $OPS_INSTALL_PATH
