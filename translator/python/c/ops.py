@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Open source copyright declaration based on BSD open source template:
 # http://www.opensource.org/licenses/bsd-license.php
@@ -263,6 +263,10 @@ def ops_par_loop_parse(text):
   return (loop_args)
 
 def main(source_files):
+
+  if sys.version_info < (3, 0):
+    sys.stdout.write("ops.py requires Python version > 3.0\n")
+    sys.exit(1)
 
   if not source_files:
     raise ValueError("No source files specified.")
