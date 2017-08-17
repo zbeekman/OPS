@@ -95,7 +95,7 @@ def ops_decl_const_parse(text):
 
     # check for syntax errors
     if len(args) != 4:
-      print 'Error in ops_decl_const : must have four arguments'
+      print('Error in ops_decl_const : must have four arguments')
       return
 
     consts.append({
@@ -137,7 +137,7 @@ def get_arg_dat(arg_string, j):
 
     # check for syntax errors
     if not(len(dat_args_string.split(',')) == 5 or len(dat_args_string.split(',')) == 6 ):
-      print 'Error parsing op_arg_dat(%s): must have four or five arguments' % dat_args_string
+      print('Error parsing op_arg_dat(%s): must have four or five arguments' % dat_args_string)
       return
 
     if len(dat_args_string.split(',')) == 5:
@@ -172,8 +172,8 @@ def get_arg_gbl(arg_string, k):
 
     # check for syntax errors
     if len(gbl_args_string.split(',')) != 4:
-        print 'Error parsing op_arg_gbl(%s): must have four arguments' \
-              % gbl_args_string
+        print('Error parsing op_arg_gbl(%s): must have four arguments' \
+              % gbl_args_string)
         return
 
     # split the gbl_args_string into  4 and create a struct with the elements
@@ -259,7 +259,7 @@ def ops_par_loop_parse(text):
       loop_args.append(temp)
 
       i = text.find(search, i + 15)
-  print '\n\n'
+  print('\n\n')
   return (loop_args)
 
 def main(source_files):
@@ -295,8 +295,8 @@ def main(source_files):
 
   kernels_in_files = [[] for _ in range(len(source_files))]
   for a in range(0, len(source_files)):
-      print 'processing file ' + str(a) + ' of ' + str(len(source_files)) + \
-            ' ' + str(source_files[a])
+      print('processing file ' + str(a) + ' of ' + str(len(source_files)) + \
+            ' ' + str(source_files[a]))
 
       src_file = str(source_files[a])
       f = open(src_file, 'r')
@@ -313,11 +313,11 @@ def main(source_files):
       inits, exits = ops_parse_calls(text)
 
       if inits + exits > 0:
-        print ' '
+        print(' ')
       if inits > 0:
-        print'contains ops_init call'
+        print('contains ops_init call')
       if exits > 0:
-        print'contains ops_exit call'
+        print('contains ops_exit call')
 
       ninit = ninit + inits
       nexit = nexit + exits
@@ -327,7 +327,7 @@ def main(source_files):
       #
 
       const_args = ops_decl_const_parse(text)
-      print str(len(const_args))
+      print(str(len(const_args)))
 
       # cleanup '&' symbols from name and convert dim to integer
       if const_args:
@@ -347,15 +347,15 @@ def main(source_files):
                 if const_args[i]['name'] == consts[c]['name']:
                     repeat = 1
                     if const_args[i]['type'] != consts[c]['type']:
-                        print 'type mismatch in repeated ops_decl_const'
+                        print('type mismatch in repeated ops_decl_const')
                     if const_args[i]['dim'] != consts[c]['dim']:
-                        print 'size mismatch in repeated ops_decl_const'
+                        print('size mismatch in repeated ops_decl_const')
 
             if repeat > 0:
-                print 'repeated global constant ' + const_args[i]['name']
+                print('repeated global constant ' + const_args[i]['name'])
             else:
-                print '\nglobal constant (' + const_args[i]['name'].strip() \
-                      + ') of size ' + str(const_args[i]['dim'])
+                print('\nglobal constant (' + const_args[i]['name'].strip() \
+                      + ') of size ' + str(const_args[i]['dim']))
 
             # store away in master list
             if repeat == 0:
@@ -377,9 +377,9 @@ def main(source_files):
         dim   = loop_args[i]['dim']
         block = loop_args[i]['block']
         _range   = loop_args[i]['range']
-        print '\nprocessing kernel ' + name + ' with ' + str(nargs) + ' arguments'
-        print 'dim: '+dim
-        print 'range: '+str(_range)
+        print('\nprocessing kernel ' + name + ' with ' + str(nargs) + ' arguments')
+        print('dim: '+dim)
+        print('range: '+str(_range))
 
         #
         # process arguments
@@ -408,11 +408,11 @@ def main(source_files):
                   break
 
             if l == -1:
-                print 'unknown access type for argument ' + str(m)
+                print('unknown access type for argument ' + str(m))
             else:
                 accs[m] = l + 1
 
-            print var[m]+' '+str(dims[m]) +' '+str(stens[m])+' '+str(accs[m])
+            print(var[m]+' '+str(dims[m]) +' '+str(stens[m])+' '+str(accs[m]))
 
 
           if arg_type.strip() == 'ops_arg_gbl':
@@ -426,18 +426,18 @@ def main(source_files):
                 if args['acc'].strip() == OPS_accs_labels[l].strip():
                     break
             if l == -1:
-                print 'unknown access type for argument ' + str(m)
+                print('unknown access type for argument ' + str(m))
             else:
                 accs[m] = l + 1
 
-            print var[m]+' '+ str(dims[m]) +' '+str(accs[m])
+            print(var[m]+' '+ str(dims[m]) +' '+str(accs[m]))
 
           if arg_type.strip() == 'ops_arg_idx':
             var[m] = ''
             dims[m] = 0
             typs[m] = 'int'
             typ[m] = 'ops_arg_idx'
-            print 'arg_idx'
+            print('arg_idx')
 
 
         #
@@ -462,12 +462,12 @@ def main(source_files):
                     kernels[nk]['accs'][arg] == accs[arg]
                     #kernels[nk]['var'][arg] == var[arg] and \
             if rep2:
-              print 'repeated kernel with compatible arguments: ' + \
-                    kernels[nk]['name'],
+              print('repeated kernel with compatible arguments: ' + \
+                    kernels[nk]['name'], end=' ')
               repeat = True
               which_file = nk
             else:
-              print 'repeated kernel with incompatible arguments: ERROR'
+              print('repeated kernel with incompatible arguments: ERROR')
               break
 
 
@@ -649,16 +649,16 @@ def main(source_files):
   #
 
   if ninit == 0:
-      print' '
-      print'-----------------------------'
-      print'  ERROR: no call to ops_init  '
-      print'-----------------------------'
+      print(' ')
+      print('-----------------------------')
+      print('  ERROR: no call to ops_init  ')
+      print('-----------------------------')
 
   if nexit == 0:
-      print' '
-      print'-------------------------------'
-      print'  WARNING: no call to ops_exit  '
-      print'-------------------------------'
+      print(' ')
+      print('-------------------------------')
+      print('  WARNING: no call to ops_exit  ')
+      print('-------------------------------')
 
 
   #
@@ -684,13 +684,13 @@ def main(source_files):
   if retcode == 0:
     retcode = subprocess.call("$OPS_INSTALL_PATH/../translator/python/c/format.sh", shell=True)
   else:
-    print 'Cannot find clang-format in PATH'
-    print 'Install and add clang-format to PATH to format generated code to conform to code formatting guidelines'
+    print('Cannot find clang-format in PATH')
+    print('Install and add clang-format to PATH to format generated code to conform to code formatting guidelines')
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         main(source_files=sys.argv[1:]) # [1:] ignores the ops.py file itself.
     # Print usage message if no arguments given
     else:
-        print __doc__
+        print(__doc__)
         sys.exit(1)

@@ -20,3 +20,10 @@ accelerate.cpp advec_cell.cpp accelerate.cpp advec_mom.cpp calc_dt.cpp \
 field_summary.cpp flux_calc.cpp viscosity.cpp update_halo.cpp generate.cpp \
 initialise_chunk.cpp
 ```
+
+## Python3 
+is support via `2to3` ( https://docs.python.org/3.0/library/2to3.html ) as follows:
+```
+cd <OPS_REPO>
+2to3 -w -x import translator/python/c/*.py && 2to3 -w -x import translator/python/fortran/*.py
+```
