@@ -382,7 +382,106 @@ void ops_get_offsets_deprange(long &base_ptr, long &end_ptr, ops_dat dat, std::v
   if (end_ptr < base_ptr) {printf("WARNING: overreaching depranges! Please check, shouldn't happen\n%s %ld-%ld, dep range: %d-%d prev %d - %d next start %d\n",dat->name, base_ptr, end_ptr, dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 0], dependency_ranges[dat->index][tile * 2 * OPS_MAX_DIM + 2 * d + 1],dependency_ranges[dat->index][mod(tile-1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 0],dependency_ranges[dat->index][mod(tile-1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 1], dependency_ranges[dat->index][mod(tile+1,num_tiles) * 2 * OPS_MAX_DIM + 2 * d + 0]); end_ptr = base_ptr;} //zero ranges
 }
 
+void ops_tiling_init_streams() {
+  cutilSafeCall(cudaStreamCreateWithFlags(&stream_copy_down,cudaStreamNonBlocking));
+  cutilSafeCall(cudaStreamCreateWithFlags(&stream_copy_up,cudaStreamNonBlocking));
+  int leastPriority, greatestPriority;
+  cudaDeviceGetStreamPriorityRange ( &leastPriority, &greatestPriority );
+  cutilSafeCall(cudaStreamCreateWithPriority(&stream_compute,cudaStreamNonBlocking,greatestPriority));
+  stream = stream_compute;
+}
+
+void ops_tiling_datastructures_init(int size) {
+  dats.resize(size);
+  for (int i = 0; i < dats.size(); i++) {
+    dats[i].bytes = 0;
+    dats[i].dat = NULL;
+  }
+  ops_dat_entry *item, *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    dats[item->dat->index].dat = item->dat;
+    dats[item->dat->index].base_offset = item->dat->base_offset;
+    memcpy(dats[item->dat->index].size, item->dat->size, sizeof(int)*OPS_MAX_DIM);
+  }
+}
+
+int deviceIdUM = -1;
+cudaEvent_t e1, e2;
+
+void ops_prepare_tile_managed(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
+  //First time
+  if (deviceIdUM == -1) {
+    cutilSafeCall(cudaGetDevice(&deviceIdUM));
+    ops_tiling_init_streams();
+    ops_tiling_datastructures_init(dependency_ranges.size());
+    cudaEventCreate(&e1);
+    cudaEventCreate(&e2);
+  }
+  cudaEventSynchronize(e1);
+  cudaEventSynchronize(e2);
+  if (tile == 0) {
+    ops_dat_entry *item, *tmp_item;
+    for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+      tmp_item = TAILQ_NEXT(item, entries);
+      ops_dat dat = item->dat;
+      int idx = dat->index;
+      long base_ptr, end_ptr, delta;
+      ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
+      if (end_ptr > base_ptr)
+        cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream));
+    }
+    cutilSafeCall(cudaStreamSynchronize(stream));
+  }
+}
+
+void ops_finish_tile_managed(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
+  cudaEventRecord(e1, stream);
+  int next_tile = (tile+1)%total_tiles;
+  int prev_tile = mod(tile-1,total_tiles);
+  ops_dat_entry *item, *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    ops_dat dat = item->dat;
+    int idx = dat->index;
+    cudaStreamSynchronize(stream_copy_up);
+    if (tile != total_tiles-1) {
+      long base_ptr, end_ptr, delta;
+      ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, next_tile, total_tiles, 1, delta); //Right
+      if (end_ptr > base_ptr)
+        cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream_copy_up));
+    }
+    if (tile > 0) {
+      long base_ptr, end_ptr, delta;
+      ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, prev_tile, total_tiles, 0, delta); //Left
+      if (end_ptr > base_ptr)
+        cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,cudaCpuDeviceId,stream_copy_down));
+    }
+  }
+  cudaEventRecord(e2, stream_copy_up);
+  if (tile == total_tiles-1) {
+    for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+      tmp_item = TAILQ_NEXT(item, entries);
+      ops_dat dat = item->dat;
+      int idx = dat->index;
+      cudaStreamSynchronize(stream_copy_up);
+      long base_ptr, end_ptr, delta;
+      ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, prev_tile, total_tiles, 2, delta); //Left
+      if (end_ptr > base_ptr)
+        cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,cudaCpuDeviceId,stream));
+    }
+  }
+  // rotate streams and swap events
+  cudaStream_t st;
+  cudaEvent_t et;
+  st = stream; stream = stream_copy_up; stream_copy_up = st;
+  st = stream_copy_up; stream_copy_up = stream_copy_down; stream_copy_down = st;
+  et = e1; e1 = e2; e2 = et;
+}
+
 void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
+
+  if (ops_managed) {ops_prepare_tile_managed(tile, total_tiles, tiled_ranges, dependency_ranges, datasets_access_type); return;}
 
   if (tile == 0) {
     cutilSafeCall(cudaStreamSynchronize(stream_copy_up));
@@ -392,24 +491,8 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
 
     //First time ever - initialise
     if (dats.size()==0) {
-      dats.resize(dependency_ranges.size());
-      for (int i = 0; i < dats.size(); i++) {
-        dats[i].bytes = 0;
-        dats[i].dat = NULL;
-      }
-      ops_dat_entry *item, *tmp_item;
-      for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
-        tmp_item = TAILQ_NEXT(item, entries);
-        dats[item->dat->index].dat = item->dat;
-        dats[item->dat->index].base_offset = item->dat->base_offset;
-        memcpy(dats[item->dat->index].size, item->dat->size, sizeof(int)*OPS_MAX_DIM);
-      }
-      cutilSafeCall(cudaStreamCreateWithFlags(&stream_copy_down,cudaStreamNonBlocking));
-      cutilSafeCall(cudaStreamCreateWithFlags(&stream_copy_up,cudaStreamNonBlocking));
-      int leastPriority, greatestPriority;
-      cudaDeviceGetStreamPriorityRange ( &leastPriority, &greatestPriority );
-      cutilSafeCall(cudaStreamCreateWithPriority(&stream_compute,cudaStreamNonBlocking,greatestPriority));
-      stream = stream_compute;
+      ops_tiling_datastructures_init(dependency_ranges.size());
+      ops_tiling_init_streams();
     }
 
     //determine biggest dependency range for each dataset to allocate scratch memory on GPU
@@ -425,7 +508,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
       }
       dats[idx].max_width = maxsize;
       //Allocate it a little larger, if not edge dat in this dim (or just unused)
-      if (maxsize > 1 && dats[idx].bytes == 0) maxsize += 15; 
+      if (maxsize > 1 && dats[idx].bytes == 0) maxsize += 17; 
 
       // total required memory
       long cum_size = item->dat->elem_size; 
@@ -675,6 +758,7 @@ void ops_prepare_tile(int tile, int total_tiles, std::vector<std::vector<int> > 
 //  check_trans(compctr,E_COMP); 
 }
 void ops_finish_tile(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
+  if (ops_managed) {ops_finish_tile_managed(tile, total_tiles, tiled_ranges, dependency_ranges, datasets_access_type); return;}
   cudaEvent_t e_copydown;
   cudaEventCreate(&e_copydown);
   cudaEventRecord(e_copydown, stream_copy_down);
