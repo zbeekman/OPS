@@ -1,0 +1,40 @@
+#!/bin/bash
+# e.g. mpirun -np 4 numawrap ./application
+# Find the rank of the process from the MPI local rank environment variable
+# to ensure unique output filenames.
+
+if [[ -n ${OMPI_COMM_WORLD_LOCAL_RANK} ]]
+    then
+    lrank=${OMPI_COMM_WORLD_LOCAL_RANK}
+elif [[ -n ${MV2_COMM_WORLD_LOCAL_RANK} ]]
+    then
+    lrank= ${MV2_COMM_WORLD_LOCAL_RANK}
+elif [[ -n ${PMI_ID} && -n ${MPISPAWN_LOCAL_NPROCS} ]]
+    then
+    let lrank=${PMI_ID}%${PERHOST}
+elif [[ -n ${MPI_LOCALRANKID} ]]
+    then
+    let lrank=${MPI_LOCALRANKID}
+elif [[ -n ${PMI_RANK} ]]
+    then
+    let lrank=${PMI_RANK}
+else
+    echo could not determine local rank
+fi
+
+export CUDA_VISIBLE_DEVICES=${lrank}
+
+case ${lrank} in
+[0-13])
+    numactl --cpunodebind=0 ${@}
+    ;;
+[14-27])
+    numactl --cpunodebind=1 ${@}
+    ;;
+[28-41])
+    numactl --cpunodebind=0 ${@}
+    ;;
+[42-55])
+    numactl --cpunodebind=1 ${@}
+    ;;
+esac
