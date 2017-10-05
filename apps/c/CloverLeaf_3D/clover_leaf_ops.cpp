@@ -164,13 +164,13 @@ ops_cyclic = 1;
 
     clover_time = clover_time + dt;
 
-    if(summary_frequency != 0)
+/*    if(summary_frequency != 0)
       if((step%summary_frequency) == 0)
         field_summary();
-
+*/
     if((clover_time+g_small) > end_time || (step >= end_step)) {
       complete=TRUE;
-      field_summary();
+//      field_summary();
       ops_fprintf(g_out,"\n\n Calculation complete\n");
       ops_fprintf(g_out,"\n Clover is finishing\n");
       break;
