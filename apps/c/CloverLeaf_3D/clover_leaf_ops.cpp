@@ -71,7 +71,7 @@ int test_problem;
 int profiler_on;
 int state_max;
 int complete;
-
+extern int ops_cyclic;
 int fields;
 
 double dtold, dt, clover_time, dtinit, dtmin, dtmax, dtrise, dtu_safe, dtv_safe, dtw_safe, dtc_safe,
@@ -127,6 +127,8 @@ int main(int argc, char **argv)
   ops_timers(&ct0, &et0);
 
   ops_checkpointing_initphase_done();
+  ops_execute();
+  ops_cyclic=1;
   while(1) {
 
     step = step + 1;

@@ -63,7 +63,7 @@ void timestep()
   fields &= ~FIELD_ENERGY1;
   fields &= ~FIELD_SOUNDSPEED;
   fields |= FIELD_PRESSURE;
-  fields |= FIELD_VISCOSITY;
+  fields &= ~FIELD_VISCOSITY;
   fields |= FIELD_XVEL0;
   fields |= FIELD_YVEL0;
   fields &= ~FIELD_XVEL1;
