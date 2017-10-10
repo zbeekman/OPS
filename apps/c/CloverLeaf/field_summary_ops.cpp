@@ -39,7 +39,6 @@ void ideal_gas(int predict);
 
 void field_summary()
 {
-  double qa_diff;
 
   int x_min = field.x_min;
   int x_max = field.x_max;
@@ -49,8 +48,6 @@ void field_summary()
   int rangexy_inner[] = {x_min,x_max,y_min,y_max};
 
   ideal_gas(FALSE);
-
-  double vol= 0.0 , mass = 0.0, ie = 0.0, ke = 0.0, press = 0.0;
 
   ops_par_loop_field_summary_kernel("field_summary_kernel", clover_grid, 2, rangexy_inner,
                ops_arg_dat(volume, 1, S2D_00, "double", OPS_READ),
@@ -64,6 +61,11 @@ void field_summary()
                ops_arg_reduce(red_ie, 1, "double", OPS_INC),
                ops_arg_reduce(red_ke, 1, "double", OPS_INC),
                ops_arg_reduce(red_press, 1, "double", OPS_INC));
+}
+
+void field_summary_report(int step) {
+  double qa_diff;
+  double vol= 0.0 , mass = 0.0, ie = 0.0, ke = 0.0, press = 0.0;
 
   ops_reduction_result(red_vol,&vol);
   ops_reduction_result(red_mass,&mass);

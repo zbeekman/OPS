@@ -245,6 +245,7 @@ void ops_par_loop_update_halo_kernel1_b2_execute(ops_kernel_descriptor *desc) {
     OPS_kernels[43].mpi_time += t2-t1;
   }
 
+
   //call kernel wrapper function, passing in pointers to data
   ops_update_halo_kernel1_b2<<<grid, tblock, 0, stream >>> (  (double *)p_a[0], (double *)p_a[1],
            (double *)p_a[2], (double *)p_a[3],

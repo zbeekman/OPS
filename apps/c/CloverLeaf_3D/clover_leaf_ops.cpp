@@ -22,6 +22,7 @@
 
 void initialise();
 void field_summary();
+void field_summary_report(int step);
 void timestep();
 void PdV(int predict);
 void accelerate();
@@ -76,7 +77,7 @@ int fields;
 double dtold, dt, clover_time, dtinit, dtmin, dtmax, dtrise, dtu_safe, dtv_safe, dtw_safe, dtc_safe,
        dtdiv_safe, dtc, dtu, dtv, dtdiv;
 
-extern int ops_cyclic;
+
 double end_time;
 int end_step;
 int visit_frequency;
@@ -124,8 +125,7 @@ int main(int argc, char **argv)
 
   double ct0, ct1, et0, et1;
   ops_timers(&ct0, &et0);
-ops_execute();
-ops_cyclic = 1;
+
   ops_checkpointing_initphase_done();
   while(1) {
 
@@ -164,13 +164,14 @@ ops_cyclic = 1;
 
     clover_time = clover_time + dt;
 
-/*    if(summary_frequency != 0)
+    if(summary_frequency != 0)
       if((step%summary_frequency) == 0)
         field_summary();
-*/
+
     if((clover_time+g_small) > end_time || (step >= end_step)) {
       complete=TRUE;
-//      field_summary();
+      field_summary();
+      field_summary_report(step);
       ops_fprintf(g_out,"\n\n Calculation complete\n");
       ops_fprintf(g_out,"\n Clover is finishing\n");
       break;

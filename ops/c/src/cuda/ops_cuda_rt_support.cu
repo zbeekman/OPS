@@ -427,7 +427,6 @@ void ops_prepare_tile_managed(int tile, int total_tiles, std::vector<std::vector
     for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
       tmp_item = TAILQ_NEXT(item, entries);
       ops_dat dat = item->dat;
-      int idx = dat->index;
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, 2, delta); //Full
       if (end_ptr > base_ptr)
@@ -445,7 +444,6 @@ void ops_finish_tile_managed(int tile, int total_tiles, std::vector<std::vector<
   for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
     tmp_item = TAILQ_NEXT(item, entries);
     ops_dat dat = item->dat;
-    int idx = dat->index;
     cudaStreamSynchronize(stream_copy_up);
     {
       long base_ptr, end_ptr, delta;

@@ -44,8 +44,6 @@ void ideal_gas(int predict);
 
 void field_summary()
 {
-  double qa_diff;
-
   //initialize sizes using global values
   int x_min = field.x_min;
   int x_max = field.x_max;
@@ -58,8 +56,6 @@ void field_summary()
 
   //call ideal_gas again here
   ideal_gas(FALSE);
-
-  double vol= 0.0 , mass = 0.0, ie = 0.0, ke = 0.0, press = 0.0;
 
   ops_par_loop(field_summary_kernel, "field_summary_kernel", clover_grid, 3, rangexyz_inner,
       ops_arg_dat(volume, 1, S3D_000, "double", OPS_READ),
@@ -74,6 +70,11 @@ void field_summary()
       ops_arg_reduce(red_ie, 1, "double", OPS_INC),
       ops_arg_reduce(red_ke, 1, "double", OPS_INC),
       ops_arg_reduce(red_press, 1, "double", OPS_INC));
+}
+
+void field_summary_report(int step) {
+  double qa_diff;
+  double vol= 0.0 , mass = 0.0, ie = 0.0, ke = 0.0, press = 0.0;
 
    //printf("mass = %lf\n",mass);
    ops_reduction_result(red_vol,&vol);

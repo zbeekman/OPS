@@ -39,6 +39,7 @@ void update_halo(int fields, int depth);
 void viscosity_func();
 void calc_dt(double*, char*,
              double*, double*, int*, int*, double*, int*);
+void field_summary_report(int step);
 
 void timestep()
 {
@@ -106,6 +107,9 @@ void timestep()
 
   //dtl_control = (char *)xmalloc(8*sizeof(char ));
   calc_dt(&dtlp, dtl_control, &xl_pos, &yl_pos, &jldt, &kldt, &zl_pos, &lldt);
+  if(summary_frequency != 0)
+    if(((step-1)%summary_frequency) == 0)
+      field_summary_report(step-1);
 
   double dt_temp = g_big;
   if (dtlp <= dt_temp) {

@@ -57,6 +57,7 @@
 // Cloverleaf functions
 void initialise();
 void field_summary();
+void field_summary_report(int step);
 void timestep();
 void PdV(int predict);
 void accelerate();
@@ -204,6 +205,7 @@ ops_cyclic = 1;
     if((clover_time+g_small) > end_time || (step >= end_step)) {
       complete=TRUE;
       field_summary();
+      field_summary_report(step);
       ops_fprintf(g_out,"\n\n Calculation complete\n");
       ops_fprintf(g_out,"\n Clover is finishing\n");
       break;
