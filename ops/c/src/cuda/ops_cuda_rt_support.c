@@ -295,13 +295,13 @@ void mvConstArraysToDevice(int consts_bytes) {
 void mvReductArraysToDevice(int reduct_bytes) {
   cutilSafeCall(cudaMemcpyAsync(OPS_reduct_d, OPS_reduct_h, reduct_bytes,
                            cudaMemcpyHostToDevice,stream));
-  cutilSafeCall(cudaStreamSynchronize(stream));
+//  cutilSafeCall(cudaStreamSynchronize(stream));
 }
 
 void mvReductArraysToHost(int reduct_bytes) {
   cutilSafeCall(cudaMemcpyAsync(OPS_reduct_h, OPS_reduct_d, reduct_bytes,
                            cudaMemcpyDeviceToHost,stream));
-  cutilSafeCall(cudaStreamSynchronize(stream));
+//  cutilSafeCall(cudaStreamSynchronize(stream));
 }
 
 void ops_cuda_exit() {
