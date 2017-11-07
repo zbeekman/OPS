@@ -79,7 +79,7 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
 
   NDIM = 2 #the dimension of the application is hardcoded here .. need to get this dynamically
 
-  gen_full_code = 1;
+  gen_full_code = 0;
 
 ##########################################################################
 #  create new kernel file
@@ -233,6 +233,22 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
 
     check_accs(name, arg_list, arg_typ, text[i+j:k])
 
+    if reduction:
+      comm('')
+      comm(' reduction variables')
+    for n in range (0,nargs):
+      if arg_typ[n] == 'ops_arg_gbl':
+        if accs[n] <> OPS_READ:
+          for d in range(0,int(dims[n])):
+            if accs[n] == OPS_INC:
+              code(typs[n]+' p_a'+str(n)+'_'+str(d)+'_'+name+' = 0;')
+            elif accs[n] == OPS_MIN:
+              code(typs[n]+' p_a'+str(n)+'_'+str(d)+'_'+name+' = INFINITY_'+typs[n]+';')
+            elif accs[n] == OPS_MAX:
+              code(typs[n]+' p_a'+str(n)+'_'+str(d)+'_'+name+' = -INFINITY_'+typs[n]+';')
+            elif accs[n] == OPS_WRITE:
+              code(typs[n]+' p_a'+str(n)+'_'+str(d)+'_'+name+' = 0;')
+
     comm('')
     comm(' host stub function')
     code('void ops_par_loop_'+name+'_execute(ops_kernel_descriptor *desc) {')
@@ -366,32 +382,38 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
       ENDIF()
       code('')
 
-    for n in range (0,nargs):
-      if arg_typ[n] == 'ops_arg_gbl':
-        if accs[n] <> OPS_READ:
-          for d in range(0,int(dims[n])):
-            code(typs[n]+' p_a'+str(n)+'_'+str(d)+' = p_a'+str(n)+'['+str(d)+'];')
+    code('')
+    code('#ifdef OPS_PARREGION')
+    code('int tid = omp_get_thread_num();')
+    code('#endif')
 
     line = ''
     for n in range (0,nargs):
       if arg_typ[n] == 'ops_arg_gbl':
         if accs[n] == OPS_MIN:
           for d in range(0,int(dims[n])):
-            line = line + ' reduction(min:p_a'+str(n)+'_'+str(d)+')'
+            line = line + ' reduction(min:p_a'+str(n)+'_'+str(d)+'_'+name+')'
         if accs[n] == OPS_MAX:
           for d in range(0,int(dims[n])):
-            line = line + ' reduction(max:p_a'+str(n)+'_'+str(d)+')'
+            line = line + ' reduction(max:p_a'+str(n)+'_'+str(d)+'_'+name+')'
         if accs[n] == OPS_INC:
           for d in range(0,int(dims[n])):
-            line = line + ' reduction(+:p_a'+str(n)+'_'+str(d)+')'
+            line = line + ' reduction(+:p_a'+str(n)+'_'+str(d)+'_'+name+')'
         if accs[n] == OPS_WRITE: #this may not be correct ..
           for d in range(0,int(dims[n])):
-            line = line + ' reduction(+:p_a'+str(n)+'_'+str(d)+')'
+            line = line + ' reduction(+:p_a'+str(n)+'_'+str(d)+'_'+name+')'
     if NDIM==3 and reduction==0:
       line2 = ' collapse(2)'
     else:
       line2 = line
+    code('#ifdef OPS_PARREGION')
+    if reduction:
+      code('#pragma omp for'+line2)
+    else:
+      code('#pragma omp for nowait'+line2)
+    code('#else')
     code('#pragma omp parallel for'+line2)
+    code('#endif')
     if NDIM>2:
       FOR('n_z','start[2]','end[2]')
     if NDIM>1:
@@ -404,7 +426,7 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
     code('#pragma loop_count(10000)')
     code('#pragma omp simd'+line+' aligned('+line3[:-1]+')')
     code('#else')
-    code('#pragma simd'+line)
+    code('#pragma omp simd'+line)
     code('#endif')
     FOR('n_x','start[0]','end[0]')
     if arg_idx <> -1:
@@ -434,7 +456,7 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
           for d in range(0,int(dims[n])):
             code(arg_list[n]+'['+str(d)+'] = ZERO_'+typs[n]+';')
         if accs[n] <> OPS_READ and int(dims[n])==1:
-          code(typs[n]+' *'+arg_list[n]+' = &p_a'+str(n)+'_0;')
+          code(typs[n]+' *'+arg_list[n]+' = &p_a'+str(n)+'_0_'+name+';')
 
     #insert user kernel
     code(kernel_text);
@@ -443,16 +465,16 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
       if arg_typ[n] == 'ops_arg_gbl':
         if accs[n] == OPS_MIN and int(dims[n])>1:
           for d in range(0,int(dims[n])):
-            code('p_a'+str(n)+'_'+str(d)+' = MIN(p_a'+str(n)+'_'+str(d)+','+arg_list[n]+'['+str(d)+']);')
+            code('p_a'+str(n)+'_'+str(d)+' = MIN(p_a'+str(n)+'_'+str(d)+'_'+name+','+arg_list[n]+'['+str(d)+']);')
         if accs[n] == OPS_MAX and int(dims[n])>1:
           for d in range(0,int(dims[n])):
-            code('p_a'+str(n)+'_'+str(d)+' = MAX(p_a'+str(n)+'_'+str(d)+''+arg_list[n]+'['+str(d)+']);')
+            code('p_a'+str(n)+'_'+str(d)+' = MAX(p_a'+str(n)+'_'+str(d)+'_'+name+','+arg_list[n]+'['+str(d)+']);')
         if accs[n] == OPS_INC and int(dims[n])>1:
           for d in range(0,int(dims[n])):
-            code('p_a'+str(n)+'_'+str(d)+' +='+arg_list[n]+'['+str(d)+'];')
+            code('p_a'+str(n)+'_'+str(d)+'_'+name+' +='+arg_list[n]+'['+str(d)+'];')
         if accs[n] == OPS_WRITE and int(dims[n])>1: #this may not be correct
           for d in range(0,int(dims[n])):
-            code('p_a'+str(n)+'_'+str(d)+' +='+arg_list[n]+'['+str(d)+'];')
+            code('p_a'+str(n)+'_'+str(d)+'_'+name+' +='+arg_list[n]+'['+str(d)+'];')
 
     ENDFOR()
     if NDIM>1:
@@ -460,11 +482,37 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
     if NDIM>2:
       ENDFOR()
 
+    if reduction:
+      code('#ifdef OPS_PARREGION')
+      code('#pragma omp single nowait')
+      code('{')
+      code('#endif')
+    else:
+      code('#ifdef OPS_PARREGION')
+      code('synk::Barrier::getInstance()->wait(tid);')
+      code('#endif')
+
     for n in range (0, nargs):
       if arg_typ[n] == 'ops_arg_gbl':
         if accs[n] <> OPS_READ:
           for d in range(0,int(dims[n])):
-            code('p_a'+str(n)+'['+str(d)+'] = p_a'+str(n)+'_'+str(d)+';')
+            if accs[n] == OPS_MIN:
+              code('p_a'+str(n)+'['+str(d)+'] = MIN(p_a'+str(n)+'['+str(d)+'],p_a'+str(n)+'_'+str(d)+'_'+name+');')
+              code('p_a'+str(n)+'_'+str(d)+'_'+name+' = INFINITY_'+typs[n]+';')
+            if accs[n] == OPS_MAX:
+              code('p_a'+str(n)+'['+str(d)+'] = MAX(p_a'+str(n)+'['+str(d)+'],p_a'+str(n)+'_'+str(d)+'_'+name+');')
+              code('p_a'+str(n)+'_'+str(d)+'_'+name+' = -INFINITY_'+typs[n]+';')
+            if accs[n] == OPS_INC:
+              code('p_a'+str(n)+'['+str(d)+'] += p_a'+str(n)+'_'+str(d)+'_'+name+';')
+              code('p_a'+str(n)+'_'+str(d)+'_'+name+' = 0;')
+            if accs[n] == OPS_WRITE: #this may not be correct
+              code('p_a'+str(n)+'['+str(d)+'] += p_a'+str(n)+'_'+str(d)+'_'+name+';')
+              code('p_a'+str(n)+'_'+str(d)+'_'+name+' = 0;')
+
+    if reduction:
+      code('#ifdef OPS_PARREGION')
+      code('}')
+      code('#endif')
 
     if gen_full_code==1:
       IF('OPS_diags > 1')
@@ -584,6 +632,10 @@ def ops_gen_mpi_lazy(master, date, consts, kernels, soa_set):
   if os.path.exists('./user_types.h'):
     code('#include "user_types.h"')
   code('')
+  code('#ifdef OPS_PARREGION')
+  code('#include <omp.h>')
+  code('#include <synk/barrier.hpp>')
+  code('#endif')
 
   comm(' global constants')
   for nc in range (0,len(consts)):

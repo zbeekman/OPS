@@ -848,6 +848,22 @@ void ops_execute() {
       memcpy(&ops_kernel_list[i]->range[0],
              &tiled_ranges[i][OPS_MAX_DIM * 2 * tile],
              OPS_MAX_DIM * 2 * sizeof(int));
+    }
+    #pragma omp parallel
+    for (int i = 0; i < ops_kernel_list.size(); i++) {
+      if (tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 1] -
+                  tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 0] ==
+              0 ||
+          (ops_dims_tiling_internal > 1 &&
+           tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 3] -
+                   tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 2] ==
+               0) ||
+          (ops_dims_tiling_internal > 2 &&
+           tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 5] -
+                   tiled_ranges[i][OPS_MAX_DIM * 2 * tile + 4] ==
+               0))
+        continue;
+
       if (OPS_diags > 4)
         printf("Proc %d Executing %s %d-%d %d-%d %d-%d\n", ops_get_proc(), ops_kernel_list[i]->name,
                ops_kernel_list[i]->range[0], ops_kernel_list[i]->range[1],
