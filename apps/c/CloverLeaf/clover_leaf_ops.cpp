@@ -125,7 +125,7 @@ int main(int argc, char **argv)
   ops_timers(&ct0, &et0);
 
 ops_execute();
-ops_cyclic = 1;
+ops_cyclic = 0;
   while(1) {
 
     step = step + 1;

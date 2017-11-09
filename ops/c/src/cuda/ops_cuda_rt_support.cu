@@ -434,6 +434,19 @@ void ops_prepare_tile_managed(int tile, int total_tiles, std::vector<std::vector
     }
     cutilSafeCall(cudaStreamSynchronize(stream));
   }
+  //Memadvise - read-only, or write-only stuff
+  ops_dat_entry *item, *tmp_item;
+  for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
+    tmp_item = TAILQ_NEXT(item, entries);
+    ops_dat dat = item->dat;
+    int idx = dat->index;
+    if (datasets_access_type[idx] == 0 && !upload_me(idx) && ops_cyclic) //Write first, cyclic execution (i.e. temporary dataset)
+      cutilSafeCall(cudaMemAdvise(dat->data, dat->mem, cudaMemAdviseSetReadMostly, deviceIdUM));
+    else if (datasets_access_type[idx] == 1) //Read only 
+      cutilSafeCall(cudaMemAdvise(dat->data, dat->mem, cudaMemAdviseSetReadMostly, deviceIdUM));
+    else //Otherwise read-and-write that needs to be saved
+      cutilSafeCall(cudaMemAdvise(dat->data, dat->mem, cudaMemAdviseUnsetReadMostly, deviceIdUM));
+  }
 }
 
 void ops_finish_tile_managed(int tile, int total_tiles, std::vector<std::vector<int> > &tiled_ranges, std::vector<std::vector<int> > &dependency_ranges, std::vector<int> &datasets_access_type) {
@@ -444,23 +457,25 @@ void ops_finish_tile_managed(int tile, int total_tiles, std::vector<std::vector<
   for (item = TAILQ_FIRST(&OPS_dat_list); item != NULL; item = tmp_item) {
     tmp_item = TAILQ_NEXT(item, entries);
     ops_dat dat = item->dat;
+    int idx = dat->index;
     cudaStreamSynchronize(stream_copy_up);
     {
       long base_ptr, end_ptr, delta;
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, next_tile, total_tiles, next_tile == 0 ? 2 : 1, delta); //Right
       if (end_ptr > base_ptr)
-        cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream_copy_up));
+        if (!(datasets_access_type[idx] == 0 && !upload_me(idx) && ops_cyclic))
+          cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream_copy_up));
       else {
         long base_ptr, end_ptr, delta;
         ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, (next_tile+1)%total_tiles, total_tiles, (next_tile+1)%total_tiles == 0 ? 2 : 1, delta); //Right
         if (end_ptr > base_ptr)
-          cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream_copy_up));
+          if (!(datasets_access_type[idx] == 0 && !upload_me(idx) && ops_cyclic))
+            cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,deviceIdUM,stream_copy_up));
       }
     }
       long base_ptr, end_ptr, delta;
-      //ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, tile, total_tiles, tile == total_tiles -1 ? 2 : 0, delta); //Left
       ops_get_offsets_deprange(base_ptr, end_ptr, dat, dependency_ranges, prev_tile, total_tiles, prev_tile == total_tiles -1 ? 2 : 0, delta); //Left
-      if (end_ptr > base_ptr)
+      if (end_ptr > base_ptr && !((datasets_access_type[idx] == 0 && !upload_me(idx) && ops_cyclic) || datasets_access_type[idx] == 1))
         cutilSafeCall(cudaMemPrefetchAsync(dat->data+base_ptr,end_ptr-base_ptr,cudaCpuDeviceId,stream));
   }
   cudaEventRecord(e2, stream_copy_up);
