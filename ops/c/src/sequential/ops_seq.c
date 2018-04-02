@@ -38,6 +38,7 @@
 #include <ops_lib_core.h>
 char *ops_halo_buffer = NULL;
 int ops_halo_buffer_size = 0;
+extern int OPS_realloc;
 
 void ops_init(int argc, char **argv, int diags) {
   ops_init_core(argc, argv, diags);
@@ -54,7 +55,7 @@ ops_dat ops_decl_dat_char(ops_block block, int size, int *dat_size, int *base,
   ops_dat dat = ops_decl_dat_temp_core(block, size, dat_size, base, d_m, d_p,
                                        data, type_size, type, name);
 
-  if (data != NULL) {
+  if (data != NULL && !OPS_realloc) {
     // printf("Data read in from HDF5 file or is allocated by the user\n");
     dat->user_managed =
         1; // will be reset to 0 if called from ops_decl_dat_hdf5()
@@ -65,12 +66,11 @@ ops_dat ops_decl_dat_char(ops_block block, int size, int *dat_size, int *base,
     // Allocate memory immediately
     int bytes = size * type_size;
 
-    //nx_pad    = (1+((nx          -1)/SIMD_VEC))*SIMD_VEC; // Compute padding for vecotrization (in adi_cpu tridiagonal library)
-
+    //nx_pad    = (1+((nx-1)/SIMD_VEC))*SIMD_VEC; // Compute padding for vecotrization (in adi_cpu tridiagonal library)
     // Compute    padding x-dim for vecotrization
     int x_pad = (1+((dat->size[0]-1)/SIMD_VEC))*SIMD_VEC - dat->size[0];
     dat->size[0] += x_pad;
-    dat->d_p[0] = x_pad;
+    dat->d_p[0] += x_pad;
     //printf("\nPadded size is %d total size =%d \n",x_pad,dat->size[0]);
 
 
@@ -80,6 +80,14 @@ ops_dat ops_decl_dat_char(ops_block block, int size, int *dat_size, int *base,
     // dat->data = (char*) ops_calloc(bytes,1); //initialize data bits to 0
     dat->user_managed = 0;
     dat->mem = bytes;
+    if (data != NULL && OPS_realloc) {
+      int sizeprod = 1; 
+      for (int d = 1; d < block->dims; d++) sizeprod *= (dat->size[d]);
+      int xlen_orig = (-d_m[0]+d_p[0]+dat_size[0]) * size * type_size;
+      for (int i = 0; i < sizeprod; i++) {
+        memcpy(&dat->data[i*dat->size[0] * size * type_size],&data[i*xlen_orig],xlen_orig);
+      }
+    }
   }
 
   // Compute offset in bytes to the base index

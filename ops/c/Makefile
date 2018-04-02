@@ -147,7 +147,8 @@ else
 endif
 
 
-TRID_INSTALL_PATH := /home/mgiles/mudalige/TriDiagonal/Tridiag-Git/tridsolver/scalar/build
+TRID_INSTALL_PATH ?= /home/mgiles/mudalige/TriDiagonal/Tridiag-Git/tridsolver/scalar/build
+#TRID_INSTALL_PATH := /home/mgiles/mudalige/TriDiagonal/Tridiag-Git/tridsolver/scalar/build
 #TRID_INSTALL_PATH := /home/knotman/git/tridsolver/scalar/build
 TRID_INC := -I$(TRID_INSTALL_PATH)/include
 TRID_LIB := -L$(TRID_INSTALL_PATH)/lib
