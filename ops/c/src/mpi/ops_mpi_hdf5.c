@@ -1394,10 +1394,9 @@ ops_dat ops_decl_dat_hdf5(ops_block block, int dat_dim, char const *type,
     MPI_Abort(OPS_MPI_HDF5_WORLD, 2);
   } else {
     if (strcmp(type, read_type) != 0) {
-      ops_printf("Error: ops_decl_dat_hdf5: Type of data of data set %s is not "
-                 "equal: type on file %s, type specified %s .. Aborting\n",
+      if (OPS_diags>1) ops_printf("Warning: ops_decl_dat_hdf5: Type of data of data set %s is not "
+                 "equal: type on file %s, type specified %s .. Performing implicit type conversion\n",
                  dat_name, read_type, type);
-      MPI_Abort(OPS_MPI_HDF5_WORLD, 2);
     }
   }
 
@@ -1437,18 +1436,18 @@ ops_dat ops_decl_dat_hdf5(ops_block block, int dat_dim, char const *type,
 
   // set type size
   int type_size;
-  if (strcmp(read_type, "double") == 0)
+  if (strcmp(type, "double") == 0)
     type_size = sizeof(double);
-  else if (strcmp(read_type, "float") == 0)
+  else if (strcmp(type, "float") == 0)
     type_size = sizeof(float);
-  else if (strcmp(read_type, "int") == 0)
+  else if (strcmp(type, "int") == 0)
     type_size = sizeof(int);
-  else if (strcmp(read_type, "long") == 0)
+  else if (strcmp(type, "long") == 0)
     type_size = sizeof(long);
-  else if (strcmp(read_type, "long long") == 0)
+  else if (strcmp(type, "long long") == 0)
     type_size = sizeof(long long);
   else {
-    printf("Error: Unknown type %s in ops_decl_dat_hdf5()\n", read_type);
+    printf("Error: Unknown type %s in ops_decl_dat_hdf5()\n", type);
     exit(2);
   }
 
