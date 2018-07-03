@@ -47,11 +47,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/queue.h> //contains double linked list implementation
-
-#include "ops_macros.h"
-#include "ops_util.h"
+#include "queue.h" //contains double linked list implementation
 
 /*
 * enum list for ops_par_loop
@@ -104,6 +100,10 @@
 #define INFINITY_ull ULLONG_MAX;
 
 #define ZERO_bool 0;
+
+#include "ops_macros.h"
+#include "ops_util.h"
+
 
 #ifdef __cplusplus
 extern "C" {

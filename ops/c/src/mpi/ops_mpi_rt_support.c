@@ -855,7 +855,7 @@ void ops_halo_exchanges_datlist(ops_dat *dats, int ndats, int *depths) {
 void ops_mpi_reduce_double(ops_arg *arg, double *data) {
   (void)data;
   // if(arg->argtype == OPS_ARG_GBL && arg->acc != OPS_READ) {
-  double result[arg->dim * ops_comm_global_size];
+  double *result = (double*)malloc(arg->dim * ops_comm_global_size * sizeof(double));
 
   if (arg->acc == OPS_INC) // global reduction
     MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_SUM,
@@ -877,6 +877,7 @@ void ops_mpi_reduce_double(ops_arg *arg, double *data) {
     }
   }
   memcpy(arg->data, result, sizeof(double) * arg->dim);
+  free(result);
   //}
 }
 
@@ -884,7 +885,7 @@ void ops_mpi_reduce_float(ops_arg *arg, float *data) {
   (void)data;
 
   // if(arg->argtype == OPS_ARG_GBL && arg->acc != OPS_READ) {
-  float result[arg->dim * ops_comm_global_size];
+  float *result = (float*)malloc(arg->dim * ops_comm_global_size * sizeof(float));
 
   if (arg->acc == OPS_INC) // global reduction
     MPI_Allreduce((float *)arg->data, result, arg->dim, MPI_FLOAT, MPI_SUM,
@@ -906,6 +907,7 @@ void ops_mpi_reduce_float(ops_arg *arg, float *data) {
     }
   }
   memcpy(arg->data, result, sizeof(float) * arg->dim);
+  free(result);
   //}
 }
 
@@ -913,7 +915,7 @@ void ops_mpi_reduce_int(ops_arg *arg, int *data) {
   (void)data;
 
   // if(arg->argtype == OPS_ARG_GBL && arg->acc != OPS_READ) {
-  int result[arg->dim * ops_comm_global_size];
+  int *result = (int*)malloc(arg->dim * ops_comm_global_size * sizeof(int));
 
   if (arg->acc == OPS_INC) // global reduction
     MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_SUM,
@@ -935,11 +937,12 @@ void ops_mpi_reduce_int(ops_arg *arg, int *data) {
     }
   }
   memcpy(arg->data, result, sizeof(int) * arg->dim);
+  free(result);
   //}
 }
 
 void ops_execute_reduction(ops_reduction handle) {
-  char local[handle->size];
+  char *local = (char*)malloc(handle->size*sizeof(char));
   memcpy(local, handle->data, handle->size);
   if (strcmp(handle->type, "int") == 0 || strcmp(handle->type, "int(4)") == 0 ||
       strcmp(handle->type, "integer(4)") == 0 ||
@@ -1036,6 +1039,7 @@ void ops_execute_reduction(ops_reduction handle) {
     ops_mpi_reduce_double(&arg, (double *)local);
   }
   memcpy(handle->data, local, handle->size);
+  free(local);
 }
 
 void ops_set_halo_dirtybit(ops_arg *arg) {

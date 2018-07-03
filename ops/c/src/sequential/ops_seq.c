@@ -38,7 +38,9 @@
 #include <ops_lib_core.h>
 char *ops_halo_buffer = NULL;
 int ops_halo_buffer_size = 0;
+#ifdef __unix__
 int posix_memalign(void **memptr, size_t alignment, size_t size);
+#endif
 
 void ops_init(int argc, char **argv, int diags) {
   ops_init_core(argc, argv, diags);
@@ -79,7 +81,7 @@ ops_dat ops_decl_dat_char(ops_block block, int size, int *dat_size, int *base,
     #endif*/
     for (int i = 0; i < block->dims; i++)
       bytes = bytes * dat->size[i];
-#ifdef __INTEL_COMPILER
+#if defined(__INTEL_COMPILER) && defined(__unix__)
 //    dat->data = (char *)_mm_malloc(bytes, 2*1024*1024); // initialize data bits to 0
     posix_memalign((void**)&(dat->data), 2*1024*1024, bytes);
 #else
