@@ -327,3 +327,4 @@ void getIdx(ops_block block, int *start, int *idx) {
     idx[n] = start[n];
   }
 }
+
